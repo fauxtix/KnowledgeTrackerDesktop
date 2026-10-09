@@ -1,5 +1,11 @@
 # KnowledgeTrackerDesktop
 
+![Plataforma: Windows](https://img.shields.io/badge/plataforma-Windows-0078D4?style=flat-square&logo=windows)
+[![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4?style=flat-square&logo=dotnet)](https://dotnet.microsoft.com/download/dotnet/10.0)
+![Interface: Windows Forms](https://img.shields.io/badge/interface-Windows%20Forms-512BD4?style=flat-square)
+![Armazenamento: SQLite](https://img.shields.io/badge/armazenamento-SQLite-003B57?style=flat-square&logo=sqlite)
+[![Licença: MIT](https://img.shields.io/badge/Licen%C3%A7a-MIT-yellow.svg?style=flat-square)](LICENSE)
+
 O KnowledgeTrackerDesktop é uma aplicação para Windows que permite registar
 problemas técnicos e as respetivas soluções, para as encontrar e reutilizar
 mais tarde. Guarde notas de resolução, passos ordenados, excertos de código,
@@ -7,6 +13,8 @@ etiquetas, projetos e referências a ficheiros numa base de conhecimento SQLite
 pessoal.
 
 **[Read in English](README.md)**
+
+Este projeto está licenciado ao abrigo da [Licença MIT](LICENSE).
 
 ## Funcionalidades
 
