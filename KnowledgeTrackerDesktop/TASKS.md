@@ -128,6 +128,13 @@ Rollback on failure.
 
 ## 3. Centralize Save Logic
 
+### Status: Completed
+
+`KnowledgeEntryService.SaveAsync` delegates persistence of the complete entry
+aggregate to the repository, which transactionally synchronizes the parent,
+steps, and attachments. The original requirement is retained below as project
+history.
+
 Create a clear application operation:
 
 ```csharp
@@ -150,6 +157,12 @@ Avoid requiring the UI to know how individual child records are persisted.
 
 ## 4. Centralize Delete Logic
 
+### Status: Completed
+
+`KnowledgeEntryService.DeleteAsync` delegates to the repository, which removes
+the entry and its child rows in one transaction. The original requirement is
+retained below as project history.
+
 Create a clear operation:
 
 ```csharp
@@ -169,6 +182,12 @@ atomically.
 # High Priority
 
 ## 5. Add Persistence Tests
+
+### Status: Completed
+
+Repository and service tests cover create/read/update/delete, step and
+attachment synchronization, ordering, and transaction rollback. The scenarios
+below are retained as the original test checklist.
 
 Add tests for:
 
@@ -463,7 +482,7 @@ Do not optimize before there is a measurable need.
 
 Potential future features:
 
-* full attachment management
+* richer attachment management beyond the current add/open/remove UI
 * Markdown export
 * JSON export/import
 * database backup/restore

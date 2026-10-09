@@ -92,9 +92,11 @@ Examples of valid service operations:
 SaveAsync(KnowledgeEntry entry)
 DeleteAsync(int id)
 GetAllAsync()
-SearchAsync(string text)
 ToggleFavoriteAsync(KnowledgeEntry entry)
 ```
+
+Search, filtering, and sorting currently operate on the loaded collection in
+`ctlMain`; they are not application-service operations.
 
 ---
 
@@ -440,7 +442,8 @@ Do not optimize prematurely.
 
 Search may be implemented at repository level when database querying is appropriate.
 
-The current application can load entries and apply presentation filtering in memory.
+The current application loads entries through `IKnowledgeEntryService.GetAllAsync()`
+and `ctlMain` applies search, filtering, and sorting to the in-memory collection.
 
 Repository search should be used when:
 

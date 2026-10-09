@@ -1,0 +1,95 @@
+# KnowledgeTrackerDesktop
+
+KnowledgeTrackerDesktop is a Windows desktop application for recording and
+finding technical problems and solutions. Keep troubleshooting notes, ordered
+resolution steps, code snippets, tags, project details, and file references in
+a personal SQLite knowledge base.
+
+**[Ler em português](README.pt-PT.md)**
+
+## Features
+
+- Search entries and combine the search with project, tag, and favorite filters.
+- Sort by resolution date, title, or project.
+- Create, edit, and delete entries with descriptions, Markdown, comments, code,
+  technologies, tags, and optional YouTube links.
+- Manage ordered resolution steps and file attachments. Attachments store file
+  paths; the files themselves are not copied into the database.
+- View statistics for entries, favorites, projects, tags, and activity over
+  time.
+- Switch the application language between English and Portuguese (Portugal).
+
+## Requirements
+
+- Windows.
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
+- A Syncfusion WinForms license key configured as the `SYNCFUSION_LICENSE_KEY`
+  environment variable. The application checks for this key at startup.
+
+Obtain and use a Syncfusion license according to Syncfusion's licensing terms.
+Do not commit the key to the repository.
+
+## Build and run
+
+Clone the repository and build the solution:
+
+```powershell
+git clone https://github.com/fauxtix/KnowledgeTrackerDesktop.git
+cd KnowledgeTrackerDesktop
+dotnet restore
+dotnet build KnowledgeTrackerDesktop.slnx
+```
+
+Set `SYNCFUSION_LICENSE_KEY` in your user or machine environment, then start
+the application:
+
+```powershell
+dotnet run --project KnowledgeTrackerDesktop\KnowledgeTrackerDesktop.csproj
+```
+
+For a temporary setting in the current PowerShell session:
+
+```powershell
+$env:SYNCFUSION_LICENSE_KEY = "your-license-key"
+dotnet run --project KnowledgeTrackerDesktop\KnowledgeTrackerDesktop.csproj
+```
+
+## Tests
+
+Run the test suite:
+
+```powershell
+dotnet test KnowledgeTrackerDesktop.Tests\KnowledgeTrackerDesktop.Tests.csproj
+```
+
+Run a single test by method name or test class:
+
+```powershell
+dotnet test KnowledgeTrackerDesktop.Tests\KnowledgeTrackerDesktop.Tests.csproj --filter "Name~TestMethodName"
+dotnet test KnowledgeTrackerDesktop.Tests\KnowledgeTrackerDesktop.Tests.csproj --filter "FullyQualifiedName~TestClassName"
+```
+
+The tests use xUnit and temporary SQLite databases for persistence and
+migration scenarios.
+
+## Data and privacy
+
+The application is local-first; it does not currently provide cloud
+synchronization. During development, its SQLite database is created as
+`knowledge.db3` in the solution root. Deployed builds store the database beside
+the application. On first startup, an existing database at
+`%LOCALAPPDATA%\KnowledgeTrackerApp\knowledge.db3` is copied to the new location
+using SQLite's backup API; the original is retained.
+
+The local database and generated build files are excluded from Git. Back up
+your database separately if you need to preserve your knowledge base.
+Removing an entry or attachment reference does not delete the physical file
+referenced by an attachment path.
+
+## Project documentation
+
+- [Architecture](KnowledgeTrackerDesktop/ARCHITECTURE.md)
+- [Coding standards](KnowledgeTrackerDesktop/CODING_STANDARDS.md)
+- [Product requirements](KnowledgeTrackerDesktop/PRD.md)
+- [UI guidelines](KnowledgeTrackerDesktop/UI_GUIDELINES.md)
+- [UI design specification](KnowledgeTrackerDesktop/UI_DESIGN_SPEC.md)
