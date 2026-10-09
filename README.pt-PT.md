@@ -14,12 +14,33 @@ pessoal.
   favoritos.
 - Ordene por data de resolução, título ou projeto.
 - Crie, edite e elimine entradas com descrições em Markdown, comentários,
-  código, tecnologias, etiquetas e ligações opcionais para o YouTube.
-- Organize passos de resolução e anexos. Os anexos guardam os caminhos dos
-  ficheiros; os ficheiros não são copiados para a base de dados.
+  código, tecnologias e etiquetas. Associe à entrada um tutorial ou uma
+  demonstração do YouTube para voltar a encontrar facilmente o vídeo que
+  complementa a solução, junto das respetivas notas.
+- Organize passos de resolução e associe ficheiros relacionados, como registos
+  ou documentos de referência, para manter o material de apoio acessível junto
+  da solução. Os anexos guardam os caminhos dos ficheiros; os ficheiros não
+  são copiados para a base de dados.
 - Consulte estatísticas de entradas, favoritos, projetos, etiquetas e
   atividade ao longo do tempo.
 - Alterne o idioma da aplicação entre inglês e português (Portugal).
+
+## Separadores do editor de entradas
+
+O editor divide uma entrada em três separadores para organizar a informação
+por assunto e facilitar a sua consulta:
+
+- **Geral** — título e metadados da entrada (projeto, data, tecnologias,
+  etiquetas e estado de favorito), além da descrição em Markdown, código,
+  anexos e comentários.
+- **YouTube** — ligação para um vídeo que apoia ou demonstra a solução, guardada
+  com a entrada para consulta posterior.
+- **Resoluções** — passos de resolução ordenados que descrevem como o problema
+  foi resolvido.
+
+Os separadores são partes da mesma entrada, não registos separados. Use
+**Guardar** para persistir a entrada e os respetivos passos de resolução em
+conjunto.
 
 ## Requisitos
 

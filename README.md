@@ -12,12 +12,32 @@ a personal SQLite knowledge base.
 - Search entries and combine the search with project, tag, and favorite filters.
 - Sort by resolution date, title, or project.
 - Create, edit, and delete entries with descriptions, Markdown, comments, code,
-  technologies, tags, and optional YouTube links.
-- Manage ordered resolution steps and file attachments. Attachments store file
-  paths; the files themselves are not copied into the database.
+  technologies, and tags. Add a related YouTube tutorial or demonstration to
+  an entry so the video supporting a solution is easy to find again alongside
+  your notes.
+- Manage ordered resolution steps and attach related files, such as logs or
+  reference documents, so supporting material stays easy to find with the
+  solution. Attachments store file paths; the files themselves are not copied
+  into the database.
 - View statistics for entries, favorites, projects, tags, and activity over
   time.
 - Switch the application language between English and Portuguese (Portugal).
+
+## Entry editor tabs
+
+The editor separates an entry into three tabs to keep related information
+organized and easier to work with:
+
+- **General** — the entry's title and metadata (project, date, technologies,
+  tags, and favorite status), plus its Markdown description, code, attachments,
+  and comments.
+- **YouTube** — a video link that supports or demonstrates the solution, kept
+  with the entry for later reference.
+- **Resolutions** — the ordered troubleshooting steps that describe how the
+  problem was solved.
+
+These tabs are sections of the same entry, not separate records. Use **Save**
+to persist the entry and its resolution steps together.
 
 ## Requirements
 
