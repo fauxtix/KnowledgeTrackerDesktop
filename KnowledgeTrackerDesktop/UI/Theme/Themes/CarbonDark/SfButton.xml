@@ -1,0 +1,7 @@
+<Theme ThemeName="CarbonDark" BaseThemeName="Office2016DarkGray">
+  <Control Name="SfButton">
+    <Properties Font="Segoe UI;9;Regular" />
+    <Elements BackColor="#7C3AED" DisabledBackColor="#2E375E" HoverBackColor="#8B5CF6" PressedBackColor="#6D28D9" FocusedBackColor="#7C3AED" ForeColor="#F8FAFC" HoverForeColor="#F8FAFC" PressedForeColor="#F8FAFC" FocusedForeColor="#F8FAFC" DisabledForeColor="#94A3B8" BorderColor="#2E375E" HoverBorderColor="#7C3AED" PressedBorderColor="#6D28D9" DisabledBorderColor="#2E375E" FocusedBorderColor="#06B6D4">
+    </Elements>
+  </Control>
+</Theme>

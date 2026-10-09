@@ -1,0 +1,90 @@
+﻿Before implementing anything, review the design specification against the actual KnowledgeTracker solution.
+
+Read all of these documents:
+
+- AGENTS.md
+- PRD.md
+- ARCHITECTURE.md
+- UI_GUIDELINES.md
+- CODING_STANDARDS.md
+- TASKS.md
+- UI_DESIGN_SPEC.md
+
+Then inspect the actual implementation, especially:
+
+- frmMain
+- ctlMain
+- ctlAddEdit
+- ctlManageSteps
+- Statistics-related controls
+- NavigationServiceWinForms
+- application services
+- existing Syncfusion controls
+- theme configuration
+
+IMPORTANT:
+
+Do NOT modify any files.
+Do NOT implement the redesign.
+Do NOT refactor anything.
+Do NOT change the architecture.
+
+I want a design/implementation feasibility review only.
+
+Check whether UI_DESIGN_SPEC.md is:
+
+1. Consistent with PRD.md
+2. Consistent with ARCHITECTURE.md
+3. Consistent with UI_GUIDELINES.md
+4. Consistent with the existing application architecture
+5. Realistically implementable with the current Syncfusion WinForms setup
+6. Compatible with the existing services and repositories
+7. Compatible with the existing navigation system
+8. Compatible with the current KnowledgeEntry, Step and Attachment models
+
+Identify:
+
+- contradictions
+- ambiguous requirements
+- requirements that cannot be implemented cleanly with the current code
+- requirements that would require backend/service changes
+- requirements that would require navigation changes
+- requirements that are purely UI changes
+- potential regressions
+- missing interaction details
+- missing states
+- unrealistic layout assumptions
+
+Pay particular attention to:
+
+- Library two-pane layout
+- entry selection and preview
+- context menu behavior
+- favorite interaction
+- search/filter/sort
+- Add/Edit layout
+- Markdown editing and preview
+- code whitespace preservation
+- Manage Steps
+- staged Apply/Cancel behavior
+- Statistics navigation
+- Back/history behavior
+- empty/loading/error states
+- minimum window size
+- theme consistency
+
+Then produce a report with these sections:
+
+1. Specification summary
+2. What can be implemented entirely in the UI layer
+3. What requires service/navigation changes
+4. What requires persistence changes
+5. Contradictions with the existing architecture
+6. Ambiguities that should be resolved before implementation
+7. Recommended implementation order
+8. Risks
+9. Final recommendation
+
+Do not make any changes.
+
+After producing the report, stop and wait for my instructions.

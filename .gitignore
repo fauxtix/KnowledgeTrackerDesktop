@@ -1,0 +1,7 @@
+/knowledge.db3*
+/knowledge.backup.*.db3
+.vs/
+**/bin/
+**/obj/
+*.csproj.user
+*.tmp

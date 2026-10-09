@@ -1,0 +1,9 @@
+<Theme ThemeName="CarbonDark" BaseThemeName="CarbonDark">
+  <Control Name="SfDateTimeEdit">
+    <Properties Font="Segoe UI;9;Regular" />
+    <Elements BorderColor="#2E375E" HoverBorderColor="#06B6D4" FocusedBorderColor="#7C3AED" ForeColor="#F8FAFC" BackColor="#121824" DisabledBackColor="#1E2640" DisabledForeColor="#94A3B8" UpDownForeColor="#94A3B8" UpDownHoverForeColor="#F8FAFC" UpDownBackColor="#1E2640" UpDownHoverBackColor="#2E375E" WatermarkForeColor="#94A3B8">
+      <DropDown BackColor="#1E2640" HoverBackColor="#2E375E" PressedBackColor="#7C3AED" ForeColor="#94A3B8" HoverForeColor="#F8FAFC" PressedForeColor="#F8FAFC">
+      </DropDown>
+    </Elements>
+  </Control>
+</Theme>

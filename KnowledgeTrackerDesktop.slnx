@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="KnowledgeTrackerDesktop/KnowledgeTrackerDesktop.csproj" />
+  <Project Path="KnowledgeTrackerDesktop.Tests/KnowledgeTrackerDesktop.Tests.csproj" />
+</Solution>
