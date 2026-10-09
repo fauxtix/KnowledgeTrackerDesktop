@@ -113,7 +113,10 @@ Durante o desenvolvimento, a base de dados SQLite é criada como
 aplicação. No primeiro arranque, uma base de dados existente em
 `%LOCALAPPDATA%\KnowledgeTrackerApp\knowledge.db3` é copiada para a nova
 localização através da API de cópia de segurança do SQLite; o ficheiro original
-é mantido.
+é mantido. `KnowledgeTrackerApp` é o nome antigo da pasta LocalAppData,
+mantido para preservar a compatibilidade com instalações existentes; não é o
+nome atual do produto. A aplicação também continua a usar essa pasta para
+guardar a preferência de idioma.
 
 A base de dados local e os ficheiros gerados durante a compilação são excluídos
 do Git. Faça cópias de segurança da base de dados separadamente se quiser

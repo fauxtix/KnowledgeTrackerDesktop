@@ -110,6 +110,9 @@ synchronization. During development, its SQLite database is created as
 the application. On first startup, an existing database at
 `%LOCALAPPDATA%\KnowledgeTrackerApp\knowledge.db3` is copied to the new location
 using SQLite's backup API; the original is retained.
+`KnowledgeTrackerApp` is the legacy LocalAppData folder name used to preserve
+existing installations, not the current product name. The application also
+continues to use this folder for its saved language preference.
 
 The local database and generated build files are excluded from Git. Back up
 your database separately if you need to preserve your knowledge base.

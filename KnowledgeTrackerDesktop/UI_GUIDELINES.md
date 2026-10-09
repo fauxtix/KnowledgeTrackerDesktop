@@ -1,4 +1,4 @@
-﻿# UI Guidelines — KnowledgeTrackerApp
+# UI Guidelines — KnowledgeTrackerDesktop
 
 # UI Design Specification
 
@@ -24,7 +24,7 @@ The visual design should prioritize:
 
 ## 1. General Principles
 
-KnowledgeTrackerApp is a desktop application intended for fast technical note capture and retrieval.
+KnowledgeTrackerDesktop is a desktop application intended for fast technical note capture and retrieval.
 
 The UI should be:
 

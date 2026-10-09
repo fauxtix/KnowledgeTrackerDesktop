@@ -266,7 +266,9 @@ The application uses a local SQLite database:
 
 On first startup after this location change, existing data from
 `%LOCALAPPDATA%\KnowledgeTrackerApp\knowledge.db3` is copied with SQLite's
-backup API and the original is kept.
+backup API and the original is kept. `KnowledgeTrackerApp` is the legacy
+LocalAppData folder name and is retained for compatibility with existing user
+data; it is not the current product name.
 
 The application is primarily offline.
 

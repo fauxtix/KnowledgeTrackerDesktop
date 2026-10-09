@@ -126,7 +126,10 @@ During development, the SQLite database is stored in the solution root:
 
 Deployed builds store it beside the application. On first startup, existing
 data at `%LOCALAPPDATA%\KnowledgeTrackerApp\knowledge.db3` is copied to the
-new location using SQLite's backup API; the original file is retained.
+new location using SQLite's backup API; the original file is retained. The
+`KnowledgeTrackerApp` folder name is a legacy storage identifier, not the
+current product name. `AppLocalization` also stores language preferences in
+this folder, so do not rename it without migrating existing user data.
 
 The database contains:
 
