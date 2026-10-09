@@ -6,12 +6,14 @@
 ![Storage: SQLite](https://img.shields.io/badge/storage-SQLite-003B57?style=flat-square&logo=sqlite)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
+**[Ler em português](README.pt-PT.md)**
+
 KnowledgeTrackerDesktop is a Windows desktop application for recording and
 finding technical problems and solutions. Keep troubleshooting notes, ordered
 resolution steps, code snippets, tags, project details, and file references in
 a personal SQLite knowledge base.
 
-**[Ler em português](README.pt-PT.md)**
+
 
 This project is licensed under the [MIT License](LICENSE).
 
