@@ -1,6 +1,7 @@
 using KnowledgeTrackerDesktop.Core;
 using KnowledgeTrackerDesktop.UI.Navigation;
 using Syncfusion.WinForms.Controls;
+using Syncfusion.WinForms.Controls.Styles;
 using Syncfusion.Windows.Forms.Tools;
 
 namespace KnowledgeTrackerDesktop.UI.Views
@@ -21,6 +22,9 @@ namespace KnowledgeTrackerDesktop.UI.Views
         private readonly Panel _scrollHost = new();
         private readonly TableLayoutPanel _rows = new();
         private readonly Label _emptyLabel = new();
+        private readonly SfButton _addStepButton = new();
+        private readonly List<SfScrollFrame> _scrollFrames = new();
+        private SfScrollFrame? _hostScrollFrame;
 
         public ctlManageSteps(
             INavigationService navigation,
@@ -46,7 +50,29 @@ namespace KnowledgeTrackerDesktop.UI.Views
             Dock = DockStyle.Fill;
             BackColor = AppTheme.Background;
             Controls.Add(BuildRoot());
+            AppLocalization.LanguageChanged += OnLanguageChanged;
+            UpdateAddStepButtonSize();
             RebuildRows();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                AppLocalization.LanguageChanged -= OnLanguageChanged;
+
+                foreach (var scrollFrame in _scrollFrames)
+                {
+                    scrollFrame.Dispose();
+                }
+
+                _scrollFrames.Clear();
+
+                _hostScrollFrame?.Dispose();
+                _hostScrollFrame = null;
+            }
+
+            base.Dispose(disposing);
         }
 
         public Task OnAppearingAsync()
@@ -135,22 +161,43 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
             _scrollHost.Controls.Add(_rows);
             _scrollHost.Controls.Add(_emptyLabel);
+            _hostScrollFrame = CreateThemedScrollFrame(_scrollHost);
 
-            var addButton = new SfButton
-            {
-                AutoSize = false,
-                Size = new Size(120, 32),
-                Anchor = AnchorStyles.Left,
-                Margin = new Padding(0, 8, 0, 0),
-            };
-            AppLocalization.Bind(addButton, "+ Add step");
-            addButton.Click += (_, _) => AddStep();
+            _addStepButton.AutoSize = false;
+            _addStepButton.MinimumSize = new Size(120, 32);
+            _addStepButton.Size = new Size(120, 32);
+            _addStepButton.Anchor = AnchorStyles.Left;
+            _addStepButton.Margin = new Padding(0, 8, 0, 0);
+            AppLocalization.Bind(_addStepButton, "+ Add step");
+            _addStepButton.Click += (_, _) => AddStep();
 
             root.Controls.Add(header, 0, 0);
             root.Controls.Add(_scrollHost, 0, 1);
-            root.Controls.Add(addButton, 0, 2);
+            root.Controls.Add(_addStepButton, 0, 2);
             return root;
         }
+
+        internal static int GetAddStepButtonWidth(string text, Font font)
+        {
+            ArgumentNullException.ThrowIfNull(text);
+            ArgumentNullException.ThrowIfNull(font);
+
+            var textSize = TextRenderer.MeasureText(
+                text,
+                font,
+                Size.Empty,
+                TextFormatFlags.NoPadding);
+            return Math.Max(120, textSize.Width + 40);
+        }
+
+        private void OnLanguageChanged(object? sender, EventArgs e)
+        {
+            AppLocalization.Apply(_addStepButton);
+            UpdateAddStepButtonSize();
+        }
+
+        private void UpdateAddStepButtonSize() =>
+            _addStepButton.Width = GetAddStepButtonWidth(_addStepButton.Text, _addStepButton.Font);
 
         private void AddStep()
         {
@@ -165,6 +212,13 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
         private void RebuildRows()
         {
+            foreach (var scrollFrame in _scrollFrames)
+            {
+                scrollFrame.Dispose();
+            }
+
+            _scrollFrames.Clear();
+
             _rows.SuspendLayout();
             _rows.Controls.Clear();
             _rows.RowStyles.Clear();
@@ -219,12 +273,15 @@ namespace KnowledgeTrackerDesktop.UI.Views
             {
                 Dock = DockStyle.Fill,
                 Multiline = true,
-                Height = 52,
                 ScrollBars = ScrollBars.Vertical,
+                WordWrap = true,
+                Height = 52,
+                Font = new Font("Consolas", 11f),
                 Text = _working[index].Description ?? string.Empty,
                 Margin = new Padding(0, 0, 6, 0),
             };
             description.TextChanged += (_, _) => _working[index].Description = description.Text;
+            _scrollFrames.Add(CreateThemedScrollFrame(description));
 
             row.Controls.Add(order, 0, 0);
             row.Controls.Add(description, 1, 0);
@@ -232,6 +289,33 @@ namespace KnowledgeTrackerDesktop.UI.Views
             row.Controls.Add(BuildRowButton("\u2193", index, MoveDown, enabled: index < _working.Count - 1), 3, 0);
             row.Controls.Add(BuildRowButton("\u2715", index, DeleteAt, enabled: true), 4, 0);
             return row;
+        }
+
+        private static SfScrollFrame CreateThemedScrollFrame(Control control)
+        {
+            var scrollFrame = new SfScrollFrame
+            {
+            };
+            var style = new ScrollerVisualStyle(control);
+            ApplyScrollBarTheme(style.VerticalScrollBar);
+            ApplyScrollBarTheme(style.HorizontalScrollBar);
+            scrollFrame.Style = style;
+            scrollFrame.Control = control;
+            return scrollFrame;
+        }
+
+        private static void ApplyScrollBarTheme(ScrollBarStyleInfo style)
+        {
+            style.ScrollBarBackColor = AppTheme.Background;
+            style.ThumbColor = AppTheme.CardBorder;
+            style.ThumbHoverColor = AppTheme.AccentAlt;
+            style.ThumbPressedColor = AppTheme.Accent;
+            style.ArrowButtonBackColor = AppTheme.Surface;
+            style.ArrowButtonHoverBackColor = AppTheme.CardBorder;
+            style.ArrowButtonPressedBackColor = AppTheme.Accent;
+            style.ArrowButtonForeColor = AppTheme.SecondaryText;
+            style.ArrowButtonHoverForeColor = AppTheme.PrimaryText;
+            style.ArrowButtonPressedForeColor = AppTheme.PrimaryText;
         }
 
         private SfButton BuildRowButton(string text, int index, Action<int> action, bool enabled)
@@ -281,6 +365,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _working.RemoveAt(index);
             RebuildRows();
         }
+
 
         private void ApplyAndReturn()
         {

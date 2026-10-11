@@ -21,27 +21,47 @@ namespace KnowledgeTrackerDesktop.Tests.UI
                 .Single(label => label.Text == card.Entry.Title);
 
             Assert.Equal(340, card.Width);
-            Assert.Equal(12f, title.Font.Size);
+            Assert.Equal(11f, title.Font.Size);
         }
 
         [Fact]
-        public void CardKeepsItsContentWithoutApplyingAClippingRegion()
+        public void CardShowsFieldsWithoutClippingRegionOrDescription()
         {
             using var card = new EntryCard(new KnowledgeEntry
             {
                 Id = 11,
                 Title = "Visible card",
-                Description = "Description text",
+                Description = "Hidden description",
+                ProjectName = "Internal tool",
                 Tags = "ui, test",
             });
 
+            var texts = FindControls(card).OfType<Label>().Select(label => label.Text).ToArray();
+
             Assert.Null(card.Region);
-            Assert.Contains(
-                FindControls(card).OfType<Label>(),
-                label => label.Text == "Visible card");
-            Assert.Contains(
-                FindControls(card).OfType<Label>(),
-                label => label.Text.Contains("Description text", StringComparison.Ordinal));
+            Assert.Contains("Visible card", texts);
+            Assert.DoesNotContain(texts, text => text == "Hidden description");
+            Assert.Contains("#ui", texts);
+            Assert.Contains("#test", texts);
+        }
+
+        [Fact]
+        public void CardOmitsTechnologiesAndUsesFieldCaptions()
+        {
+            using var card = new EntryCard(new KnowledgeEntry
+            {
+                Id = 14,
+                Title = "Captioned card",
+                ProjectName = "Internal tool",
+                Technologies = "C#, Sqlite",
+            });
+
+            var texts = FindControls(card).OfType<Label>().Select(label => label.Text).ToArray();
+
+            Assert.Contains("Project", texts);
+            Assert.Contains("Internal tool", texts);
+            Assert.DoesNotContain(texts, text => text == "Technologies");
+            Assert.DoesNotContain(texts, text => text == "C#, Sqlite");
         }
 
         [Fact]
@@ -130,6 +150,26 @@ namespace KnowledgeTrackerDesktop.Tests.UI
 
             Assert.Equal(10, selectedId);
             Assert.False(opened);
+        }
+
+        [Fact]
+        public void CardGrowsTallerToFitMultipleTagRows()
+        {
+            using var card = new EntryCard(new KnowledgeEntry
+            {
+                Id = 13,
+                Title = "Many tags",
+                Tags = "alpha;beta;gamma;delta;epsilon;zeta;eta;theta",
+            });
+
+            Assert.True(card.Height >= 200);
+            Assert.True(card.MinimumSize.Height >= 200);
+
+            var tagFlow = FindControls(card)
+                .OfType<FlowLayoutPanel>()
+                .Single(flow => flow.Controls.OfType<Label>().Any(label => label.Text == "#alpha"));
+
+            Assert.True(tagFlow.WrapContents);
         }
 
         private static IEnumerable<Control> FindControls(Control root)

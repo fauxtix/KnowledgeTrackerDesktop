@@ -118,13 +118,13 @@ Avoid creating unnecessary interfaces for classes that have no realistic alterna
 
 ## Database
 
-During development, the SQLite database is stored in the solution root:
+Debug builds store the SQLite database in the solution root:
 
 ```text
 <solution root>\knowledge.db3
 ```
 
-Deployed builds store it beside the application. On first startup, existing
+Non-Debug builds store it beside the application. On first startup, existing
 data at `%LOCALAPPDATA%\KnowledgeTrackerApp\knowledge.db3` is copied to the
 new location using SQLite's backup API; the original file is retained. The
 `KnowledgeTrackerApp` folder name is a legacy storage identifier, not the

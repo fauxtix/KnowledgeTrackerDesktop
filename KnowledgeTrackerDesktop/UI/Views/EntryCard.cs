@@ -14,7 +14,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
     public class EntryCard : Panel
     {
         public const int CardWidth = 340;
-        private const int CardHeight = 166;
+        private const int CardHeight = 216;
         private const int CornerRadius = 10;
         private const double OpenDebounceMs = 500;
 
@@ -29,6 +29,8 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
             Width = CardWidth;
             Height = CardHeight;
+            AutoSize = true;
+            AutoSizeMode = AutoSizeMode.GrowAndShrink;
             MinimumSize = new Size(CardWidth, CardHeight);
             Margin = new Padding(0, 0, 12, 12);
             Padding = new Padding(14, 10, 14, 10);
@@ -205,23 +207,39 @@ namespace KnowledgeTrackerDesktop.UI.Views
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
-                RowCount = 5,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 BackColor = AppTheme.Surface,
                 Margin = Padding.Empty,
             };
-            content.RowStyles.Add(new RowStyle(SizeType.Absolute, 38f));
-            content.RowStyles.Add(new RowStyle(SizeType.Absolute, 18f));
-            content.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
-            content.RowStyles.Add(new RowStyle(SizeType.Absolute, 24f));
-            content.RowStyles.Add(new RowStyle(SizeType.Absolute, 18f));
 
-            content.Controls.Add(CreateLabel(Entry.Title, AppTheme.Fonts.SectionTitle, AppTheme.PrimaryText), 0, 0);
-            content.Controls.Add(CreateLabel(Meta(), AppTheme.Fonts.Caption, AppTheme.SecondaryText), 0, 1);
-            content.Controls.Add(CreateLabel(Excerpt(), AppTheme.Fonts.Caption, AppTheme.SecondaryText), 0, 2);
-            content.Controls.Add(CreateTags(), 0, 3);
-            var counts = CreateLabel(Counts(), AppTheme.Fonts.Caption, AppTheme.SecondaryText);
+            var title = CreateLabel(Entry.Title, AppTheme.Fonts.CardHeader, AppTheme.PrimaryText);
+            title.MinimumSize = new Size(0, 34);
+            content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            content.Controls.Add(title, 0, content.RowCount);
+            content.RowCount++;
+
+            if (!string.IsNullOrWhiteSpace(Entry.ProjectName))
+            {
+                AddCardCaption(content, "Project");
+                AddCardValue(content, Entry.ProjectName.Trim());
+            }
+
+            var tags = KnowledgeEntryTags.Split(Entry.Tags);
+            if (tags.Count > 0)
+            {
+                AddCardCaption(content, "Tags");
+                content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                content.Controls.Add(CreateTags(), 0, content.RowCount);
+                content.RowCount++;
+            }
+
+            content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            var counts = CreateLabel(Counts(), AppTheme.Fonts.Small, AppTheme.SecondaryText);
             AppLocalization.Bind(counts, Counts);
-            content.Controls.Add(counts, 0, 4);
+            counts.Margin = new Padding(0, 4, 0, 0);
+            content.Controls.Add(counts, 0, content.RowCount);
+            content.RowCount++;
 
             _favorite.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             _favorite.Margin = new Padding(6, 0, 0, 0);
@@ -231,19 +249,23 @@ namespace KnowledgeTrackerDesktop.UI.Views
             return outer;
         }
 
-        private string Meta()
+        private static void AddCardCaption(TableLayoutPanel content, string key)
         {
-            var parts = new List<string>();
-            if (!string.IsNullOrWhiteSpace(Entry.ProjectName))
-            {
-                parts.Add(Entry.ProjectName!.Trim());
-            }
-            if (!string.IsNullOrWhiteSpace(Entry.Technologies))
-            {
-                parts.Add(Entry.Technologies!.Trim());
-            }
+            var label = CreateLabel(key, AppTheme.Fonts.Small, AppTheme.SecondaryText);
+            AppLocalization.Bind(label, key);
+            label.Margin = new Padding(0, 2, 0, 0);
+            content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            content.Controls.Add(label, 0, content.RowCount);
+            content.RowCount++;
+        }
 
-            return string.Join("  \u00b7  ", parts);
+        private static void AddCardValue(TableLayoutPanel content, string value)
+        {
+            var label = CreateLabel(value, AppTheme.Fonts.Small, AppTheme.PrimaryText);
+            label.MinimumSize = new Size(0, 14);
+            content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            content.Controls.Add(label, 0, content.RowCount);
+            content.RowCount++;
         }
 
         private Control CreateTags()
@@ -252,9 +274,10 @@ namespace KnowledgeTrackerDesktop.UI.Views
             var flow = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
-                AutoScroll = true,
+                WrapContents = true,
                 Margin = Padding.Empty,
             };
 
@@ -266,29 +289,13 @@ namespace KnowledgeTrackerDesktop.UI.Views
                     Text = $"#{tag}",
                     BackColor = AppTheme.ChipBackground,
                     ForeColor = AppTheme.SecondaryText,
-                    Font = AppTheme.Fonts.Caption,
+                    Font = AppTheme.Fonts.Small,
                     Padding = new Padding(6, 2, 6, 2),
-                    Margin = new Padding(0, 0, 6, 0),
+                    Margin = new Padding(0, 0, 6, 4),
                 });
             }
 
             return flow;
-        }
-
-        private string Excerpt()
-        {
-            if (string.IsNullOrWhiteSpace(Entry.Description))
-            {
-                return string.Empty;
-            }
-
-            var excerpt = string.Join(" ", Entry.Description!
-                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-                .Select(line => line.Trim())
-                .Where(line => line.Length > 0 && !line.StartsWith('#'))
-                .Take(3));
-
-            return excerpt.Length > 240 ? excerpt[..237] + "..." : excerpt;
         }
 
         private string Counts()
@@ -313,7 +320,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             return string.Join("  \u00b7  ", parts);
         }
 
-        private Label CreateLabel(string text, Font font, Color color) => new()
+        private static Label CreateLabel(string text, Font font, Color color) => new()
         {
             Dock = DockStyle.Fill,
             AutoSize = false,

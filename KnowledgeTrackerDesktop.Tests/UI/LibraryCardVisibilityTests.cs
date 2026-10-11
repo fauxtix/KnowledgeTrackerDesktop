@@ -71,6 +71,45 @@ namespace KnowledgeTrackerDesktop.Tests.UI
             });
         }
 
+        [Fact]
+        public async Task AppearingAfterSelectedTagDisappears_ClearsStaleFilter()
+        {
+            var service = new FakeEntryService(new KnowledgeEntry
+            {
+                Id = 1,
+                Title = "Initially tagged entry",
+                Tags = "obsolete",
+            });
+            using var view = new ctlMain(
+                service,
+                new FakeNavigation(),
+                new FakeShellHost(),
+                null);
+
+            await view.OnAppearingAsync();
+
+            var tagsPanel = (FlowLayoutPanel)typeof(ctlMain)
+                .GetField("_tagsPanel", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .GetValue(view)!;
+            var obsoleteTag = Assert.Single(tagsPanel.Controls.OfType<CheckBoxAdv>());
+            obsoleteTag.Checked = true;
+
+            service.SetEntries(new KnowledgeEntry
+            {
+                Id = 2,
+                Title = "Entry with a different tag",
+                Tags = "current",
+            });
+            await view.OnAppearingAsync();
+
+            var cards = Descendants(view).OfType<EntryCard>().ToArray();
+            var card = Assert.Single(cards);
+            Assert.Equal("Entry with a different tag", card.Entry.Title);
+            Assert.Contains(
+                tagsPanel.Controls.OfType<CheckBoxAdv>(),
+                option => option.Text == "current" && !option.Checked);
+        }
+
         private static IEnumerable<Control> Descendants(Control root)
         {
             foreach (Control child in root.Controls)
@@ -85,9 +124,11 @@ namespace KnowledgeTrackerDesktop.Tests.UI
 
         private sealed class FakeEntryService : IKnowledgeEntryService
         {
-            private readonly IReadOnlyList<KnowledgeEntry> _entries;
+            private IReadOnlyList<KnowledgeEntry> _entries;
 
             public FakeEntryService(params KnowledgeEntry[] entries) => _entries = entries;
+
+            public void SetEntries(params KnowledgeEntry[] entries) => _entries = entries;
 
             public Task<IReadOnlyList<KnowledgeEntry>> GetAllAsync() => Task.FromResult(_entries);
 

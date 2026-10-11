@@ -200,11 +200,14 @@ namespace KnowledgeTrackerDesktop.UI.Shell
             }
 
             view.Dock = DockStyle.Fill;
+            view.Visible = false;
             _contentHost.Controls.Add(view);
             AppLocalization.Apply(view);
             _contentHost.ResumeLayout();
 
             CarbonTheme.Apply(view);
+
+            view.Visible = true;
 
             if (view is IAppearingView appearing)
             {

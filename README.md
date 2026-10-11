@@ -29,6 +29,8 @@ This project is licensed under the [MIT License](LICENSE).
   reference documents, so supporting material stays easy to find with the
   solution. Attachments store file paths; the files themselves are not copied
   into the database.
+- Open an image gallery from the attachments section to browse supporting
+  screenshots and pictures in a carousel and open the selected file directly.
 - View statistics for entries, favorites, projects, tags, and activity over
   time.
 - Switch the application language between English and Portuguese (Portugal).
@@ -105,9 +107,9 @@ migration scenarios.
 ## Data and privacy
 
 The application is local-first; it does not currently provide cloud
-synchronization. During development, its SQLite database is created as
-`knowledge.db3` in the solution root. Deployed builds store the database beside
-the application. On first startup, an existing database at
+synchronization. Debug builds create its SQLite database as `knowledge.db3` in
+the solution root. Release and published builds store the database beside the
+application. On first startup, an existing database at
 `%LOCALAPPDATA%\KnowledgeTrackerApp\knowledge.db3` is copied to the new location
 using SQLite's backup API; the original is retained.
 `KnowledgeTrackerApp` is the legacy LocalAppData folder name used to preserve

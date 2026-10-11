@@ -116,7 +116,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 ColumnCount = 1,
                 RowCount = 2,
             };
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 120f));
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 76f));
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
             root.Controls.Add(BuildFilterBar(), 0, 0);
             root.Controls.Add(BuildListHost(), 0, 1);
@@ -163,7 +163,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             };
 
             _sort.DropDownStyle = ComboBoxStyle.DropDownList;
-            _sort.Width = 200;
+            _sort.Width = 250;
             _sort.Height = 44;
             _sort.TextBoxHeight = 40;
             _sort.Font = AppTheme.Fonts.Input;
@@ -235,6 +235,9 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _tagsPanel.Controls.Clear();
 
             var tags = EntryListFilter.CollectTags(_allEntries);
+            var availableTags = new HashSet<string>(tags, StringComparer.OrdinalIgnoreCase);
+            _selectedTags.RemoveWhere(tag => !availableTags.Contains(tag));
+
             if (tags.Count == 0)
             {
                 var emptyLabel = new Label

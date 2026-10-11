@@ -27,10 +27,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="UI\Views\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <EmbeddedResource Include="UI\Theme\Themes\CarbonDark\*.xml">
       <LogicalName>Syncfusion.WinForms.Themes.Resources.Themes.CarbonDark.%(Filename).xml</LogicalName>
     </EmbeddedResource>

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Reflection;
 using KnowledgeTrackerDesktop.Core;
 using KnowledgeTrackerDesktop.Services;
 using KnowledgeTrackerDesktop.UI.Navigation;
@@ -38,9 +39,11 @@ namespace KnowledgeTrackerDesktop.UI.Views
         private readonly TextBoxExt _youtube = new();
         private readonly SfButton _openVideo = new();
         private readonly TableLayoutPanel _attachments = new();
+        private readonly SfButton _openGallery = new();
         private readonly TextBoxExt _comments = new();
         private readonly Label _errorLabel = new();
         private readonly TableLayoutPanel _generalForm = new();
+        private readonly TableLayoutPanel _attachmentsForm = new();
         private readonly TableLayoutPanel _youtubeForm = new();
         private readonly TableLayoutPanel _resolutionForm = new();
         private readonly List<SfScrollFrame> _scrollFrames = new();
@@ -75,9 +78,13 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
             Dock = DockStyle.Fill;
             BackColor = AppTheme.Background;
+            DoubleBuffered = true;
+            AppLocalization.LanguageChanged += OnLanguageChanged;
             Controls.Add(BuildRoot());
             LoadEntryIntoControls();
         }
+
+        private void OnLanguageChanged(object? sender, EventArgs e) => AppLocalization.Apply(this);
 
         public Task OnAppearingAsync()
         {
@@ -125,6 +132,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
         private Control BuildRoot()
         {
             ConfigureForm(_generalForm);
+            ConfigureForm(_attachmentsForm);
             ConfigureForm(_youtubeForm);
             ConfigureForm(_resolutionForm);
 
@@ -141,7 +149,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             BuildMetadata();
             _generalForm.Controls.Add(_errorLabel);
             _generalForm.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            AddFormRow(_generalForm, Field("Title:", _title));
+            AddFormRow(_generalForm, BuildTitleRow());
             AddFormRow(_generalForm, BuildMetadataRow());
 
             BuildDescription();
@@ -166,8 +174,13 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 ItemSize = new Size(140, 36),
                 HotTrack = true,
             };
+            EnableDoubleBuffering(tabs);
             tabs.DrawItem += (_, e) => DrawEditorTab(tabs, e);
             var generalTab = new TabPageAdv
+            {
+                BackColor = AppTheme.Background,
+            };
+            var attachmentsTab = new TabPageAdv
             {
                 BackColor = AppTheme.Background,
             };
@@ -180,15 +193,18 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 BackColor = AppTheme.Background,
             };
             AppLocalization.Bind(generalTab, "General");
+            AppLocalization.Bind(attachmentsTab, "Attachments");
             AppLocalization.Bind(resolutionsTab, "Resolutions");
             AppLocalization.Bind(youtubeTab, "YouTube");
             generalTab.Controls.Add(CreateScrollableForm(_generalForm));
+            attachmentsTab.Controls.Add(CreateScrollableForm(_attachmentsForm));
             youtubeTab.Controls.Add(CreateScrollableForm(_youtubeForm));
             resolutionsTab.Controls.Add(CreateScrollableForm(_resolutionForm));
             tabs.Controls.Add(generalTab);
+            tabs.Controls.Add(attachmentsTab);
             tabs.Controls.Add(youtubeTab);
             tabs.Controls.Add(resolutionsTab);
-            tabs.SelectedIndex = _workingSteps.Count > 0 ? 2 : 0;
+            tabs.SelectedIndex = 0;
 
             return tabs;
         }
@@ -274,11 +290,17 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 AutoScroll = true,
                 Padding = new Padding(8),
             };
+            EnableDoubleBuffering(body);
             body.Controls.Add(form);
 
             ApplyThemedScrollFrame(body);
             return body;
         }
+
+        private static void EnableDoubleBuffering(Control control) =>
+            typeof(Control)
+                .GetProperty("DoubleBuffered", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?.SetValue(control, true);
 
         private void ApplyThemedScrollFrame(Control control)
         {
@@ -311,6 +333,8 @@ namespace KnowledgeTrackerDesktop.UI.Views
         {
             if (disposing)
             {
+                AppLocalization.LanguageChanged -= OnLanguageChanged;
+
                 foreach (var scrollFrame in _scrollFrames)
                 {
                     scrollFrame.Dispose();
@@ -334,6 +358,9 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
             _date.AllowNull = true;
             _date.Watermark = "Not set";
+            _date.AutoSize = false;
+            _date.MinimumSize = new Size(0, 27);
+            _date.MaximumSize = new Size(0, 27);
             _date.ValueChanged += (_, _) => MarkDirty();
 
             _tags.Dock = DockStyle.Fill;
@@ -347,6 +374,25 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _favorite.CheckedChanged += (_, _) => MarkDirty();
         }
 
+        private Control BuildTitleRow()
+        {
+            var row = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = 2,
+                RowCount = 1,
+                Margin = Padding.Empty,
+            };
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70f));
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30f));
+
+            row.Controls.Add(Field("Title", CreateMetadataInput(_title), rightPad: 8), 0, 0);
+            row.Controls.Add(Field("Project", CreateMetadataInput(_project)), 1, 0);
+            return row;
+        }
+
         private Control BuildMetadataRow()
         {
             var meta = new TableLayoutPanel
@@ -354,17 +400,19 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 Dock = DockStyle.Fill,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                ColumnCount = 3,
+                ColumnCount = 4,
                 RowCount = 1,
                 Margin = Padding.Empty,
             };
-            meta.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 34f));
-            meta.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33f));
-            meta.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33f));
+            meta.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 32f));
+            meta.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
+            meta.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 32f));
+            meta.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 11f));
 
-            meta.Controls.Add(Field("Project", CreateMetadataInput(_project), rightPad: 8), 0, 0);
-            meta.Controls.Add(Field("Technologies", CreateMetadataInput(_technologies), rightPad: 8), 1, 0);
-            meta.Controls.Add(Field("Date resolved", CreateMetadataInput(_date)), 2, 0);
+            meta.Controls.Add(Field("Technologies", CreateMetadataInput(_technologies), rightPad: 8), 0, 0);
+            meta.Controls.Add(Field("Date resolved", CreateMetadataInput(_date), rightPad: 8), 1, 0);
+            meta.Controls.Add(Field("Tags", CreateMetadataInput(_tags), rightPad: 8), 2, 0);
+            meta.Controls.Add(BuildFavoriteField(), 3, 0);
             return meta;
         }
 
@@ -373,6 +421,44 @@ namespace KnowledgeTrackerDesktop.UI.Views
             var wrapper = ModernLayoutHelper.WrapInRoundedPanel(input, height: 30);
             wrapper.Margin = Padding.Empty;
             return wrapper;
+        }
+
+        private Control BuildFavoriteField()
+        {
+            var container = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = 1,
+                RowCount = 2,
+                Margin = Padding.Empty,
+            };
+            container.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            container.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+            var caption = new Label
+            {
+                AutoSize = true,
+                Font = AppTheme.Fonts.SectionTitle,
+                Margin = new Padding(0, 0, 0, 2),
+            };
+
+            var host = new FlowLayoutPanel
+            {
+                AutoSize = false,
+                Height = 30,
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                Padding = new Padding(0, 4, 0, 0),
+                Margin = Padding.Empty,
+            };
+            host.Controls.Add(_favorite);
+
+            container.Controls.Add(caption, 0, 0);
+            container.Controls.Add(host, 0, 1);
+            return container;
         }
 
         private void BuildDescription()
@@ -606,7 +692,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _code.ScrollBars = ScrollBars.Both;
             _code.WordWrap = false;
             _code.AcceptsTab = true;
-            _code.Height = 210;
+            _code.Height = 120;
             _code.Font = new Font("Consolas", 11f);
             _code.TextChanged += (_, _) => MarkDirty();
             ApplyThemedScrollFrame(_code);
@@ -614,7 +700,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             var copy = new SfButton
             {
                 AutoSize = false,
-                Size = new Size(80, 30),
+                Size = new Size(100, 30),
                 Anchor = AnchorStyles.Top,
                 Margin = new Padding(8, 0, 0, 0),
                 Enabled = !string.IsNullOrEmpty(_code.Text),
@@ -622,6 +708,30 @@ namespace KnowledgeTrackerDesktop.UI.Views
             AppLocalization.Bind(copy, "Copy");
             _code.TextChanged += (_, _) => copy.Enabled = !string.IsNullOrEmpty(_code.Text);
             copy.Click += (_, _) => CopyCode();
+
+            var preview = new SfButton
+            {
+                AutoSize = false,
+                Size = new Size(130, 30),
+                Anchor = AnchorStyles.Top,
+                Margin = new Padding(8, 4, 0, 0),
+                Enabled = !string.IsNullOrEmpty(_code.Text),
+            };
+            AppLocalization.Bind(preview, "Preview");
+            _code.TextChanged += (_, _) => preview.Enabled = !string.IsNullOrEmpty(_code.Text);
+            preview.Click += (_, _) => PreviewCode();
+
+            var actions = new FlowLayoutPanel
+            {
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                Dock = DockStyle.Fill,
+                Margin = Padding.Empty,
+            };
+            actions.Controls.Add(copy);
+            actions.Controls.Add(preview);
 
             var row = new TableLayoutPanel
             {
@@ -635,7 +745,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
             row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             row.Controls.Add(_code, 0, 0);
-            row.Controls.Add(copy, 1, 0);
+            row.Controls.Add(actions, 1, 0);
 
             var section = new TableLayoutPanel
             {
@@ -709,23 +819,42 @@ namespace KnowledgeTrackerDesktop.UI.Views
             AppLocalization.Bind(add, "+ Add file");
             add.Click += (_, _) => AddAttachment();
 
+            _openGallery.AutoSize = true;
+            _openGallery.MinimumSize = new Size(120, 28);
+            _openGallery.Padding = new Padding(8, 0, 8, 0);
+            _openGallery.Anchor = AnchorStyles.Left;
+            _openGallery.Margin = new Padding(8, 4, 0, 0);
+            _openGallery.Enabled = false;
+            AppLocalization.Bind(_openGallery, "Open gallery");
+            _openGallery.Click += (_, _) => OpenGallery();
+
+            var actions = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                Margin = Padding.Empty,
+            };
+            actions.Controls.Add(add);
+            actions.Controls.Add(_openGallery);
+
             var section = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 ColumnCount = 1,
-                RowCount = 3,
+                RowCount = 2,
                 Margin = Padding.Empty,
             };
             section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            section.Controls.Add(CreateSectionLabel("Attachments"), 0, 0);
-            section.Controls.Add(_attachments, 0, 1);
-            section.Controls.Add(add, 0, 2);
+            section.Controls.Add(_attachments, 0, 0);
+            section.Controls.Add(actions, 0, 1);
 
-            AddFormRow(_generalForm, section);
+            AddFormRow(_attachmentsForm, section);
         }
 
         private void BuildComments()
@@ -831,6 +960,11 @@ namespace KnowledgeTrackerDesktop.UI.Views
             }
 
             _attachments.ResumeLayout();
+
+            _openGallery.Enabled = _entry.Attachments.Any(ImageGalleryForm.IsImage);
+
+            CarbonTheme.Apply(_attachments);
+            AppLocalization.Apply(_attachments);
         }
 
         private Control BuildAttachmentRow(AttachmentInfo attachment)
@@ -870,7 +1004,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             var detail = new Label
             {
                 AutoSize = true,
-                MaximumSize = new Size(520, 0),
+                MaximumSize = new Size(620, 0),
                 Text = string.Join("  \u00b7  ", parts),
                 ForeColor = AppTheme.SecondaryText,
                 Font = new Font(Font.FontFamily, 8f),
@@ -916,6 +1050,18 @@ namespace KnowledgeTrackerDesktop.UI.Views
             row.Controls.Add(open, 1, 0);
             row.Controls.Add(remove, 2, 0);
             return row;
+        }
+
+        private void OpenGallery()
+        {
+            var images = _entry.Attachments.Where(ImageGalleryForm.IsImage).ToList();
+            if (images.Count == 0)
+            {
+                return;
+            }
+
+            using var gallery = new ImageGalleryForm(images);
+            gallery.ShowDialog(this);
         }
 
         private void AddAttachment()
@@ -1010,6 +1156,17 @@ namespace KnowledgeTrackerDesktop.UI.Views
             {
                 Debug.WriteLine(ex);
             }
+        }
+
+        private void PreviewCode()
+        {
+            if (string.IsNullOrEmpty(_code.Text))
+            {
+                return;
+            }
+
+            using var form = new CodePreviewForm(_code.Text);
+            form.ShowDialog(this);
         }
 
         private void OpenUrl(string? url)

@@ -31,6 +31,9 @@ Este projeto está licenciado ao abrigo da [Licença MIT](LICENSE).
   ou documentos de referência, para manter o material de apoio acessível junto
   da solução. Os anexos guardam os caminhos dos ficheiros; os ficheiros não
   são copiados para a base de dados.
+- Abra uma galeria de imagens a partir da secção de anexos para consultar
+  capturas de ecrã e imagens de apoio num carrossel e abrir diretamente o
+  ficheiro selecionado.
 - Consulte estatísticas de entradas, favoritos, projetos, etiquetas e
   atividade ao longo do tempo.
 - Alterne o idioma da aplicação entre inglês e português (Portugal).
@@ -108,8 +111,8 @@ persistência e migração.
 ## Dados e privacidade
 
 A aplicação funciona localmente e não disponibiliza sincronização na nuvem.
-Durante o desenvolvimento, a base de dados SQLite é criada como
-`knowledge.db3` na raiz da solução. Nas versões publicadas, fica junto da
+Nas compilações Debug, a base de dados SQLite é criada como `knowledge.db3` na
+raiz da solução. Nas compilações Release e versões publicadas, fica junto da
 aplicação. No primeiro arranque, uma base de dados existente em
 `%LOCALAPPDATA%\KnowledgeTrackerApp\knowledge.db3` é copiada para a nova
 localização através da API de cópia de segurança do SQLite; o ficheiro original

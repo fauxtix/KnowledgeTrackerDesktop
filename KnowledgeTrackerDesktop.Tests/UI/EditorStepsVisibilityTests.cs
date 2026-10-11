@@ -1,5 +1,6 @@
 using KnowledgeTrackerDesktop.Core;
 using KnowledgeTrackerDesktop.Services;
+using KnowledgeTrackerDesktop.UI;
 using KnowledgeTrackerDesktop.UI.Navigation;
 using KnowledgeTrackerDesktop.UI.Views;
 using Syncfusion.WinForms.Controls;
@@ -11,7 +12,7 @@ namespace KnowledgeTrackerDesktop.Tests.UI;
 public sealed class EditorStepsVisibilityTests
 {
     [Fact]
-    public void ExistingStepsOpenTheResolutionsTabWithRowsVisible()
+    public void ExistingStepsAreVisibleOnTheResolutionsTab()
     {
         var entry = new KnowledgeEntry { Id = 1, Title = "Entry with steps" };
         entry.Steps.Add(new Step { Description = "First resolution step", Order = 1, KnowledgeEntryId = entry.Id });
@@ -28,9 +29,9 @@ public sealed class EditorStepsVisibilityTests
         editor.PerformLayout();
 
         var tabs = Descendants(editor).OfType<TabControlAdv>().Single();
-        Assert.Equal(2, tabs.SelectedIndex);
+        Assert.Equal(0, tabs.SelectedIndex);
 
-        var stepInputs = Descendants(tabs.TabPages[2])
+        var stepInputs = Descendants(tabs.TabPages[3])
             .OfType<TextBoxExt>()
             .Where(input => input.Text.EndsWith("resolution step", StringComparison.Ordinal))
             .ToArray();
@@ -39,7 +40,35 @@ public sealed class EditorStepsVisibilityTests
     }
 
     [Fact]
-    public void YouTubeControlsAreOnTheSecondTab()
+    public void AttachmentsAreOnTheSecondTab()
+    {
+        var entry = new KnowledgeEntry { Id = 5, Title = "Attachment tab entry" };
+        entry.Attachments.Add(new AttachmentInfo
+        {
+            KnowledgeEntryId = entry.Id,
+            FileName = "file.txt",
+            FilePath = @"C:\file.txt",
+        });
+
+        using var editor = new ctlAddEdit(
+            new FakeEntryService(),
+            new FakeNavigation(),
+            new FakeShellHost(),
+            new EntryEditorRequest(entry));
+
+        var tabs = Descendants(editor).OfType<TabControlAdv>().Single();
+
+        Assert.Equal("Attachments", tabs.TabPages[1].Text);
+        Assert.Contains(
+            Descendants(tabs.TabPages[1]).OfType<SfButton>(),
+            button => Equals(button.Tag, "+ Add file"));
+        Assert.Contains(
+            Descendants(tabs.TabPages[1]).OfType<Label>(),
+            label => label.Text == "file.txt");
+    }
+
+    [Fact]
+    public void YouTubeControlsAreOnTheThirdTab()
     {
         var entry = new KnowledgeEntry
         {
@@ -55,13 +84,42 @@ public sealed class EditorStepsVisibilityTests
 
         var tabs = Descendants(editor).OfType<TabControlAdv>().Single();
 
-        Assert.Equal("YouTube", tabs.TabPages[1].Text);
+        Assert.Equal("YouTube", tabs.TabPages[2].Text);
         Assert.Contains(
-            Descendants(tabs.TabPages[1]).OfType<TextBoxExt>(),
+            Descendants(tabs.TabPages[2]).OfType<TextBoxExt>(),
             input => input.Text == entry.YouTubeUrl);
         Assert.Contains(
-            Descendants(tabs.TabPages[1]).OfType<SfButton>(),
+            Descendants(tabs.TabPages[2]).OfType<SfButton>(),
             button => button.Text == "Open video");
+    }
+
+    [Fact]
+    public void ManageStepsAddButtonExpandsForPortugueseText()
+    {
+        using var manageSteps = new ctlManageSteps(
+            new FakeNavigation(),
+            new FakeShellHost(),
+            new ManageStepsRequest(new KnowledgeEntry { Title = "Steps" }));
+
+        var addStep = Descendants(manageSteps)
+            .OfType<SfButton>()
+            .Single(button => Equals(button.Tag, "+ Add step"));
+        addStep.Text = AppLocalization.Translate("+ Add step", AppLanguage.Portuguese);
+        Assert.Equal("+ Adicionar", addStep.Text);
+        typeof(ctlManageSteps)
+            .GetMethod("UpdateAddStepButtonSize", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .Invoke(manageSteps, null);
+        addStep.PerformLayout();
+
+        var textWidth = TextRenderer.MeasureText(
+            addStep.Text,
+            addStep.Font,
+            Size.Empty,
+            TextFormatFlags.NoPadding).Width;
+
+        Assert.False(addStep.AutoSize);
+        Assert.True(addStep.Width > 120);
+        Assert.True(addStep.Width >= textWidth + 40);
     }
 
     [Fact]
@@ -91,7 +149,7 @@ public sealed class EditorStepsVisibilityTests
     }
 
     [Fact]
-    public void CodeEditorHasIncreasedHeight()
+    public void CodeEditorHasCompactHeight()
     {
         using var editor = new ctlAddEdit(
             new FakeEntryService(),
@@ -108,7 +166,7 @@ public sealed class EditorStepsVisibilityTests
             .OfType<TextBoxExt>()
             .Single(input => input.Multiline && input.ScrollBars == ScrollBars.Both);
 
-        Assert.True(codeEditor.Height >= 210);
+        Assert.InRange(codeEditor.Height, 100, 140);
     }
 
     [Fact]
@@ -152,6 +210,96 @@ public sealed class EditorStepsVisibilityTests
         Assert.True(copyButton.Enabled);
         codeEditor.Clear();
         Assert.False(copyButton.Enabled);
+    }
+
+[Fact]
+        public void PreviewCodeIsOnlyEnabledWhenCodeIsNotEmpty()
+        {
+            using var editor = new ctlAddEdit(
+                new FakeEntryService(),
+                new FakeNavigation(),
+                new FakeShellHost(),
+                new EntryEditorRequest(new KnowledgeEntry { Title = "Preview test" }));
+
+            var codeEditor = (TextBoxExt)typeof(ctlAddEdit)
+                .GetField("_code", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                .GetValue(editor)!;
+            var previewButton = Descendants(editor)
+                .OfType<SfButton>()
+                .Single(button => Equals(button.Tag, "Preview"));
+
+            Assert.False(previewButton.Enabled);
+            codeEditor.Text = "Console.WriteLine();";
+            Assert.True(previewButton.Enabled);
+            codeEditor.Clear();
+            Assert.False(previewButton.Enabled);
+        }
+
+        [Fact]
+        public void CodePreviewFormShowsTheSnippetAndACloseButton()
+        {
+            using var form = new CodePreviewForm("var x = 1;");
+
+            var preview = Descendants(form)
+                .OfType<TextBox>()
+                .Single(textBox => textBox.Text == "var x = 1;");
+            Assert.True(preview.Multiline);
+            Assert.True(preview.ReadOnly);
+
+            Assert.Contains(
+                Descendants(form).OfType<SfButton>(),
+                button => Equals(button.Tag, "Close"));
+        }
+
+        [Fact]
+        public void TagsAndFavoriteAreVisibleOnTheGeneralTab()
+    {
+        using var editor = new ctlAddEdit(
+            new FakeEntryService(),
+            new FakeNavigation(),
+            new FakeShellHost(),
+            new EntryEditorRequest(new KnowledgeEntry { Id = 3, Title = "Tags test", Tags = "ui;sqlite" }))
+        {
+            Size = new Size(1200, 800),
+        };
+        editor.PerformLayout();
+
+        var tabs = Descendants(editor).OfType<TabControlAdv>().Single();
+        var generalTab = tabs.TabPages[0];
+
+        var tagsEditor = (TextBoxExt)typeof(ctlAddEdit)
+            .GetField("_tags", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .GetValue(editor)!;
+        var favorite = (CheckBoxAdv)typeof(ctlAddEdit)
+            .GetField("_favorite", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .GetValue(editor)!;
+
+        Assert.Contains(tagsEditor, Descendants(generalTab));
+        Assert.Contains(favorite, Descendants(generalTab));
+        Assert.Equal("ui;sqlite", tagsEditor.Text);
+    }
+
+    [Fact]
+    public void MetadataInputsShareTheSameHeight()
+    {
+        using var editor = new ctlAddEdit(
+            new FakeEntryService(),
+            new FakeNavigation(),
+            new FakeShellHost(),
+            new EntryEditorRequest(new KnowledgeEntry { Id = 4, Title = "Metadata height test" }))
+        {
+            Size = new Size(1200, 800),
+        };
+        editor.PerformLayout();
+
+        Control Field(string name) => (Control)typeof(ctlAddEdit)
+            .GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .GetValue(editor)!;
+
+        var technologies = Field("_technologies");
+        var date = Field("_date");
+
+        Assert.InRange(date.Height, technologies.Height - 1, technologies.Height + 1);
     }
 
     private static IEnumerable<Control> Descendants(Control root)

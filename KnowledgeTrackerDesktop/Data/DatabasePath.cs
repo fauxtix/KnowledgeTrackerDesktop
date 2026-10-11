@@ -4,9 +4,9 @@ namespace KnowledgeTrackerDesktop.Data
 {
     /// <summary>
     /// Resolves the location of the SQLite database.
-    /// Development builds use the solution root; deployed builds use the
-    /// application directory. Existing user data is copied from the legacy
-    /// LocalAppData location on first startup.
+    /// Debug builds use the solution root; non-Debug builds use the application
+    /// directory. Existing user data is copied from the legacy LocalAppData
+    /// location on first startup.
     /// </summary>
     public sealed class DatabasePath
     {
@@ -24,7 +24,19 @@ namespace KnowledgeTrackerDesktop.Data
         }
 
         public static string GetDefaultPath() =>
-            Path.Combine(FindApplicationRoot(), "knowledge.db3");
+            ResolveDefaultPath(AppContext.BaseDirectory, IsDevelopmentBuild);
+
+        internal static string ResolveDefaultPath(
+            string applicationBaseDirectory,
+            bool isDevelopmentBuild)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(applicationBaseDirectory);
+
+            var databaseDirectory = isDevelopmentBuild
+                ? FindApplicationRoot(applicationBaseDirectory)
+                : applicationBaseDirectory;
+            return Path.Combine(databaseDirectory, "knowledge.db3");
+        }
 
         public static string GetLegacyPath() =>
             Path.Combine(
@@ -32,9 +44,9 @@ namespace KnowledgeTrackerDesktop.Data
                 "KnowledgeTrackerApp",
                 "knowledge.db3");
 
-        private static string FindApplicationRoot()
+        private static string FindApplicationRoot(string applicationBaseDirectory)
         {
-            var directory = new DirectoryInfo(AppContext.BaseDirectory);
+            var directory = new DirectoryInfo(applicationBaseDirectory);
             string? projectDirectory = null;
 
             while (directory is not null)
@@ -53,8 +65,14 @@ namespace KnowledgeTrackerDesktop.Data
                 directory = directory.Parent;
             }
 
-            return projectDirectory ?? AppContext.BaseDirectory;
+            return projectDirectory ?? applicationBaseDirectory;
         }
+
+#if DEBUG
+        private const bool IsDevelopmentBuild = true;
+#else
+        private const bool IsDevelopmentBuild = false;
+#endif
 
         public void CopyLegacyDatabaseIfNeeded()
         {

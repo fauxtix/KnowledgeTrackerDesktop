@@ -51,9 +51,13 @@ namespace KnowledgeTrackerDesktop.UI
 
             public static Font CardTitle { get; } = new("Segoe UI", 14f, FontStyle.Bold);
 
+            public static Font CardHeader { get; } = new("Segoe UI", 11f, FontStyle.Bold);
+
             public static Font SectionTitle { get; } = new("Segoe UI", 12f, FontStyle.Bold);
 
             public static Font Caption { get; } = new("Segoe UI", 11f);
+
+            public static Font Small { get; } = new("Segoe UI", 10f);
 
             public static void RegisterAsDefault()
             {
