@@ -32,7 +32,6 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
             BackColor = AppTheme.Surface;
             MinimumSize = new Size(140, 92);
-            Padding = new Padding(20, 12, 14, 12);
 
             _value = new Label
             {
@@ -64,6 +63,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 ColumnCount = 1,
                 RowCount = 2,
                 Margin = Padding.Empty,
+                Padding = new Padding(28, 8, 16, 8),
                 BackColor = Color.Transparent,
             };
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
