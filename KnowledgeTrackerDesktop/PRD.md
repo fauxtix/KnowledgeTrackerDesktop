@@ -261,14 +261,15 @@ The application uses a local SQLite database:
 
 ```text
 <solution root>\knowledge.db3 (development)
-<application directory>\knowledge.db3 (deployed)
+%LOCALAPPDATA%\KnowledgeTrackerApp\knowledge.db3 (deployed / MSIX)
 ```
 
-On first startup after this location change, existing data from
-`%LOCALAPPDATA%\KnowledgeTrackerApp\knowledge.db3` is copied with SQLite's
-backup API and the original is kept. `KnowledgeTrackerApp` is the legacy
-LocalAppData folder name and is retained for compatibility with existing user
-data; it is not the current product name.
+The deployed location is per-user and writable, which is required for
+MSIX-packaged builds whose install directory is read-only. `KnowledgeTrackerApp`
+is a storage folder name retained for compatibility with existing user data; it
+is not the current product name. In development, an existing database from this
+folder is copied into the solution root on first startup with SQLite's backup
+API and the original is kept.
 
 The application is primarily offline.
 

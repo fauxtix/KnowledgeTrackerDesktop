@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <WapProjPath Condition="'$(WapProjPath)' == ''">$(MSBuildExtensionsPath)\Microsoft\DesktopBridge\</WapProjPath>
+    <VSWapProjPath>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Windows Application Packaging Project\$(MSBuildToolsVersion)\</VSWapProjPath>
+  </PropertyGroup>
+
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+
+  <PropertyGroup>
+    <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
+    <Platform Condition="'$(Platform)' == ''">x64</Platform>
+    <ProjectGuid>{B2E7C3A1-9F4D-4C6E-8A21-3D5F7B9C0E12}</ProjectGuid>
+    <OutputType>AppContainerExe</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>KnowledgeTrackerDesktop.Package</RootNamespace>
+    <AssemblyName>KnowledgeTrackerDesktop.Package</AssemblyName>
+    <DefaultLanguage>en-US</DefaultLanguage>
+    <TargetPlatformIdentifier>UAP</TargetPlatformIdentifier>
+    <TargetPlatformVersion Condition="'$(TargetPlatformVersion)' == ''">10.0.19041.0</TargetPlatformVersion>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <MinimumVisualStudioVersion>17.0</MinimumVisualStudioVersion>
+    <AppxPackageSigningEnabled>true</AppxPackageSigningEnabled>
+    <AppxAutoIncrementPackageRevision>False</AppxAutoIncrementPackageRevision>
+    <AppxSymbolPackageEnabled>False</AppxSymbolPackageEnabled>
+    <GenerateAppInstallerFile>False</GenerateAppInstallerFile>
+    <AppxBundle>Never</AppxBundle>
+    <AppxPackageDir>$(MSBuildThisFileDirectory)..\AppPackages\</AppxPackageDir>
+    <ProjectTypeGuids>{8AB7A2AA-B2F9-4995-8262-BD2B0F117F8C};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
+
+    <!-- The WinForms project whose .exe becomes the package entry point. -->
+    <EntryPointProjectUniqueName>..\KnowledgeTrackerDesktop\KnowledgeTrackerDesktop.csproj</EntryPointProjectUniqueName>
+
+    <!-- Package the app self-contained for x64 so no .NET runtime is required on the target machine. -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <Platforms>x64</Platforms>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <UseVSHostingProcess>false</UseVSHostingProcess>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <UseVSHostingProcess>false</UseVSHostingProcess>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AppxManifest Include="Package.appxmanifest">
+      <SubType>Designer</SubType>
+    </AppxManifest>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\KnowledgeTrackerDesktop\KnowledgeTrackerDesktop.csproj">
+      <SkipGetTargetFrameworkProperties>true</SkipGetTargetFrameworkProperties>
+      <AdditionalProperties>RuntimeIdentifier=win-x64;SelfContained=true</AdditionalProperties>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\**" />
+  </ItemGroup>
+
+  <!-- DesktopBridge props/targets live either under MSBuild\Microsoft\DesktopBridge
+       or under the Visual Studio "Windows Application Packaging Project" folder,
+       depending on the installed SDK/VS layout. Import whichever is present. -->
+  <Import Project="$(WapProjPath)Microsoft.DesktopBridge.props" Condition="Exists('$(WapProjPath)Microsoft.DesktopBridge.props')" />
+  <Import Project="$(VSWapProjPath)Microsoft.DesktopBridge.props" Condition="!Exists('$(WapProjPath)Microsoft.DesktopBridge.props') And Exists('$(VSWapProjPath)Microsoft.DesktopBridge.props')" />
+
+  <Import Project="$(WapProjPath)Microsoft.DesktopBridge.targets" Condition="Exists('$(WapProjPath)Microsoft.DesktopBridge.targets')" />
+  <Import Project="$(VSWapProjPath)Microsoft.DesktopBridge.targets" Condition="!Exists('$(WapProjPath)Microsoft.DesktopBridge.targets') And Exists('$(VSWapProjPath)Microsoft.DesktopBridge.targets')" />
+</Project>

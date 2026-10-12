@@ -5,3 +5,9 @@
 **/obj/
 *.csproj.user
 *.tmp
+
+# MSIX packaging output and signing material
+/AppPackages/
+**/AppPackages/
+*.pfx
+*.cer

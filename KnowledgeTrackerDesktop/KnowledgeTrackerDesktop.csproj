@@ -6,7 +6,35 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+
+    <!-- RID used by the MSIX packaging project (self-contained win-x64). -->
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+
+    <!-- Release metadata -->
+    <Product>KnowledgeTracker</Product>
+    <Company>KnowledgeTracker</Company>
+    <Authors>fauxtix</Authors>
+    <Copyright>Copyright © 2026 fauxtix</Copyright>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
   </PropertyGroup>
+
+  <!--
+    The Syncfusion license key is injected at build time from the
+    SYNCFUSION_LICENSE_KEY environment variable and stored as assembly
+    metadata, so published builds start without requiring an environment
+    variable on the target machine. The key is never committed to the
+    repository. When the variable is not set, no metadata is emitted and the
+    app falls back to the environment variable at runtime.
+  -->
+  <ItemGroup Condition="'$(SYNCFUSION_LICENSE_KEY)' != ''">
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>SyncfusionLicenseKey</_Parameter1>
+      <_Parameter2>$(SYNCFUSION_LICENSE_KEY)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="KnowledgeTrackerDesktop.Tests" />

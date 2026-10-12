@@ -112,18 +112,67 @@ dotnet test KnowledgeTrackerDesktop.Tests\KnowledgeTrackerDesktop.Tests.csproj -
 Os testes usam xUnit e bases de dados SQLite temporárias para cenários de
 persistência e migração.
 
+## Publicar (MSIX)
+
+A aplicação é distribuída como pacote MSIX (`win-x64` autónomo, sem necessidade
+de instalar o runtime .NET na máquina de destino).
+
+Requisitos:
+
+- Visual Studio com a carga de trabalho **Windows application packaging project**
+  e um Windows SDK correspondente (a CLI `dotnet` não consegue compilar projetos
+  `.wapproj`).
+- Uma chave de licença Syncfusion. É embutida na compilação, pelo que os pacotes
+  publicados arrancam sem variável de ambiente na máquina de destino. A chave
+  nunca é adicionada ao repositório.
+
+Compilar e assinar o pacote:
+
+```powershell
+$env:SYNCFUSION_LICENSE_KEY = "a-sua-chave-de-licenca"
+.\scripts\build-msix.ps1 -CreateSelfSignedCertificate
+```
+
+`-CreateSelfSignedCertificate` cria um certificado de assinatura autoassinado
+para testes locais, exporta-o para `scripts\KnowledgeTrackerDev.pfx` (ignorado
+pelo Git) e mostra o comando para confiar nele. O pacote é escrito em
+`AppPackages\`.
+
+Para uma versão de produção, substitua o certificado autoassinado por um
+certificado de assinatura fidedigno:
+
+```powershell
+.\scripts\build-msix.ps1 -PackageCertificateKeyFile C:\certs\meu.pfx -PackageCertificatePassword "palavra-passe"
+```
+
+O `Publisher` do manifesto em
+`KnowledgeTrackerDesktop.Package\Package.appxmanifest` tem de corresponder ao
+requerente (subject) do certificado.
+
+Instalar o pacote localmente (confiar no certificado uma vez, como
+administrador):
+
+```powershell
+Import-Certificate -FilePath .\scripts\KnowledgeTrackerDev.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
+Add-AppxPackage .\AppPackages\KnowledgeTrackerDesktop.Package_1.0.0.0_x64_Test\KnowledgeTrackerDesktop.Package_1.0.0.0_x64.msix
+```
+
+A pasta `AppPackages\..._Test\` também contém o `Install.ps1` (e o
+`Add-AppDevPackage.ps1`) que instalam o pacote e o certificado de uma só vez.
+
 ## Dados e privacidade
 
 A aplicação funciona localmente e não disponibiliza sincronização na nuvem.
 Nas compilações Debug, a base de dados SQLite é criada como `knowledge.db3` na
-raiz da solução. Nas compilações Release e versões publicadas, fica junto da
-aplicação. No primeiro arranque, uma base de dados existente em
-`%LOCALAPPDATA%\KnowledgeTrackerApp\knowledge.db3` é copiada para a nova
-localização através da API de cópia de segurança do SQLite; o ficheiro original
-é mantido. `KnowledgeTrackerApp` é o nome antigo da pasta LocalAppData,
-mantido para preservar a compatibilidade com instalações existentes; não é o
-nome atual do produto. A aplicação também continua a usar essa pasta para
-guardar a preferência de idioma.
+raiz da solução. Nas compilações Release e empacotadas, é guardada na pasta
+LocalAppData do utilizador em
+`%LOCALAPPDATA%\KnowledgeTrackerApp\knowledge.db3` (as versões empacotadas em
+MSIX usam uma cópia privada dessa pasta). Esta pasta também guarda a preferência
+de idioma. Nas compilações Debug, uma base de dados existente nessa pasta é
+copiada para a raiz da solução no primeiro arranque através da API de cópia de
+segurança do SQLite; o ficheiro original é mantido. `KnowledgeTrackerApp` é um
+nome de pasta de armazenamento mantido para preservar a compatibilidade com
+instalações existentes; não é o nome atual do produto.
 
 A base de dados local e os ficheiros gerados durante a compilação são excluídos
 do Git. Faça cópias de segurança da base de dados separadamente se quiser

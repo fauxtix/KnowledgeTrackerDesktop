@@ -1,3 +1,4 @@
+using System.Reflection;
 using KnowledgeTrackerDesktop.Bootstrap;
 using KnowledgeTrackerDesktop.Data;
 using KnowledgeTrackerDesktop.UI;
@@ -20,7 +21,7 @@ namespace KnowledgeTrackerDesktop
         static void Main()
         {
             AppLocalization.Initialize();
-            var licenseKey = ReadSyncfusionLicenseKey();
+            var licenseKey = ReadSyncfusionLicenseKey() ?? ReadEmbeddedLicenseKey();
             if (licenseKey is null)
             {
                 MessageBox.Show(
@@ -83,6 +84,22 @@ namespace KnowledgeTrackerDesktop
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Reads the license key that was embedded as assembly metadata at build
+        /// time from the <c>SYNCFUSION_LICENSE_KEY</c> environment variable, so
+        /// published builds do not require the variable to be set on the target
+        /// machine. Returns <c>null</c> when it was not injected.
+        /// </summary>
+        private static string? ReadEmbeddedLicenseKey()
+        {
+            var value = typeof(Program).Assembly
+                .GetCustomAttributes<AssemblyMetadataAttribute>()
+                .FirstOrDefault(attribute => attribute.Key == "SyncfusionLicenseKey")
+                ?.Value;
+
+            return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
         }
     }
 }

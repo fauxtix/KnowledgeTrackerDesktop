@@ -4,12 +4,21 @@ namespace KnowledgeTrackerDesktop.Data
 {
     /// <summary>
     /// Resolves the location of the SQLite database.
-    /// Debug builds use the solution root; non-Debug builds use the application
-    /// directory. Existing user data is copied from the legacy LocalAppData
-    /// location on first startup.
+    /// Debug builds use the solution root; non-Debug builds use the per-user
+    /// LocalAppData folder (<c>%LOCALAPPDATA%\KnowledgeTrackerApp</c>). The
+    /// latter is required for MSIX-packaged builds because the install
+    /// directory (<c>C:\Program Files\WindowsApps</c>) is read-only; packaged
+    /// apps also redirect LocalAppData to the package's private folder.
+    /// Existing user data is still copied from the legacy LocalAppData location
+    /// when it differs from the resolved path (relevant to Debug builds).
     /// </summary>
     public sealed class DatabasePath
     {
+        /// <summary>Folder name used under LocalAppData for the database and settings.</summary>
+        internal const string DataFolderName = "KnowledgeTrackerApp";
+
+        private const string DatabaseFileName = "knowledge.db3";
+
         public string FilePath { get; }
 
         public string? LegacyFilePath { get; }
@@ -28,21 +37,29 @@ namespace KnowledgeTrackerDesktop.Data
 
         internal static string ResolveDefaultPath(
             string applicationBaseDirectory,
-            bool isDevelopmentBuild)
+            bool isDevelopmentBuild,
+            string? localAppDataDirectory = null)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(applicationBaseDirectory);
 
-            var databaseDirectory = isDevelopmentBuild
-                ? FindApplicationRoot(applicationBaseDirectory)
-                : applicationBaseDirectory;
-            return Path.Combine(databaseDirectory, "knowledge.db3");
+            if (isDevelopmentBuild)
+            {
+                return Path.Combine(
+                    FindApplicationRoot(applicationBaseDirectory),
+                    DatabaseFileName);
+            }
+
+            var localAppData = string.IsNullOrWhiteSpace(localAppDataDirectory)
+                ? GetLocalAppDataDirectory()
+                : localAppDataDirectory!;
+            return Path.Combine(localAppData, DataFolderName, DatabaseFileName);
         }
 
         public static string GetLegacyPath() =>
-            Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "KnowledgeTrackerApp",
-                "knowledge.db3");
+            Path.Combine(GetLocalAppDataDirectory(), DataFolderName, DatabaseFileName);
+
+        private static string GetLocalAppDataDirectory() =>
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
 
         private static string FindApplicationRoot(string applicationBaseDirectory)
         {

@@ -31,25 +31,26 @@ namespace KnowledgeTrackerDesktop.Tests.Data
         }
 
         [Fact]
-        public void ResolveDefaultPath_ProductionBuild_UsesApplicationDirectoryEvenUnderSolution()
+        public void ResolveDefaultPath_ProductionBuild_UsesLocalAppData()
         {
             using var temp = new TempDatabase();
-            var solutionRoot = Path.Combine(temp.DirectoryPath, "repo");
-            var projectDirectory = Path.Combine(solutionRoot, "KnowledgeTrackerDesktop");
+            var localAppData = Path.Combine(temp.DirectoryPath, "LocalAppData");
             var publishDirectory = Path.Combine(
-                projectDirectory,
+                temp.DirectoryPath,
                 "bin",
                 "Release",
                 "net10.0-windows",
                 "publish");
             Directory.CreateDirectory(publishDirectory);
-            File.WriteAllText(
-                Path.Combine(solutionRoot, "KnowledgeTrackerDesktop.slnx"),
-                string.Empty);
 
-            var path = DatabasePath.ResolveDefaultPath(publishDirectory, isDevelopmentBuild: false);
+            var path = DatabasePath.ResolveDefaultPath(
+                publishDirectory,
+                isDevelopmentBuild: false,
+                localAppDataDirectory: localAppData);
 
-            Assert.Equal(Path.Combine(publishDirectory, "knowledge.db3"), path);
+            Assert.Equal(
+                Path.Combine(localAppData, "KnowledgeTrackerApp", "knowledge.db3"),
+                path);
         }
 
         [Fact]

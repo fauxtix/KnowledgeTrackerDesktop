@@ -17,7 +17,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
         // The Syncfusion carousel pre-scales every image to fit a ThumbSize x
         // ThumbSize box (CarouselElement.m_ThumbSize, default 200) before it
         // draws the slide. Raising it makes the images render larger.
-        private const int ThumbSize = 200;
+        private const int ThumbSize = 320;
 
         private static readonly string[] ImageExtensions =
         {

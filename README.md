@@ -108,17 +108,65 @@ dotnet test KnowledgeTrackerDesktop.Tests\KnowledgeTrackerDesktop.Tests.csproj -
 The tests use xUnit and temporary SQLite databases for persistence and
 migration scenarios.
 
+## Publish (MSIX)
+
+The application is distributed as an MSIX package (self-contained `win-x64`, so
+no .NET runtime is required on the target machine).
+
+Requirements:
+
+- Visual Studio with the **Windows application packaging project** workload and
+  a matching Windows SDK (the plain `dotnet` CLI cannot build `.wapproj`
+  packaging projects).
+- A Syncfusion license key. It is embedded into the build at compile time, so
+  published packages start without an environment variable on the target
+  machine. The key is never committed to the repository.
+
+Build and sign the package:
+
+```powershell
+$env:SYNCFUSION_LICENSE_KEY = "your-license-key"
+.\scripts\build-msix.ps1 -CreateSelfSignedCertificate
+```
+
+`-CreateSelfSignedCertificate` creates a self-signed code-signing certificate
+for local testing, exports it to `scripts\KnowledgeTrackerDev.pfx` (git-ignored)
+and prints the command to trust it. The package is written to `AppPackages\`.
+
+For a production release, replace the self-signed certificate with a trusted
+code-signing certificate:
+
+```powershell
+.\scripts\build-msix.ps1 -PackageCertificateKeyFile C:\certs\my.pfx -PackageCertificatePassword "password"
+```
+
+The manifest `Publisher` in
+`KnowledgeTrackerDesktop.Package\Package.appxmanifest` must match the
+certificate subject.
+
+Install the package locally (trust the certificate once, as administrator):
+
+```powershell
+Import-Certificate -FilePath .\scripts\KnowledgeTrackerDev.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
+Add-AppxPackage .\AppPackages\KnowledgeTrackerDesktop.Package_1.0.0.0_x64_Test\KnowledgeTrackerDesktop.Package_1.0.0.0_x64.msix
+```
+
+The `AppPackages\..._Test\` folder also contains `Install.ps1` (and
+`Add-AppDevPackage.ps1`) that install the package and its certificate in one
+step.
+
 ## Data and privacy
 
 The application is local-first; it does not currently provide cloud
 synchronization. Debug builds create its SQLite database as `knowledge.db3` in
-the solution root. Release and published builds store the database beside the
-application. On first startup, an existing database at
-`%LOCALAPPDATA%\KnowledgeTrackerApp\knowledge.db3` is copied to the new location
-using SQLite's backup API; the original is retained.
-`KnowledgeTrackerApp` is the legacy LocalAppData folder name used to preserve
-existing installations, not the current product name. The application also
-continues to use this folder for its saved language preference.
+the solution root. Release and packaged builds store it under the per-user
+LocalAppData folder at `%LOCALAPPDATA%\KnowledgeTrackerApp\knowledge.db3`
+(MSIX-packaged builds get a package-private copy of that folder). This folder
+is also used for the saved language preference. In Debug builds, an existing
+database in this folder is copied into the solution root on first startup using
+SQLite's backup API; the original is retained. `KnowledgeTrackerApp` is a
+storage folder name retained for compatibility with existing installations,
+not the current product name.
 
 The local database and generated build files are excluded from Git. Back up
 your database separately if you need to preserve your knowledge base.

@@ -124,12 +124,21 @@ Debug builds store the SQLite database in the solution root:
 <solution root>\knowledge.db3
 ```
 
-Non-Debug builds store it beside the application. On first startup, existing
-data at `%LOCALAPPDATA%\KnowledgeTrackerApp\knowledge.db3` is copied to the
-new location using SQLite's backup API; the original file is retained. The
-`KnowledgeTrackerApp` folder name is a legacy storage identifier, not the
-current product name. `AppLocalization` also stores language preferences in
-this folder, so do not rename it without migrating existing user data.
+Non-Debug builds store it under the per-user LocalAppData folder:
+
+```text
+%LOCALAPPDATA%\KnowledgeTrackerApp\knowledge.db3
+```
+
+This per-user, writable location is required for MSIX-packaged builds, whose
+install directory is read-only (packaged apps also redirect LocalAppData to the
+package's private folder). On first startup in Debug, existing data at
+`%LOCALAPPDATA%\KnowledgeTrackerApp\knowledge.db3` is copied into the solution
+root using SQLite's backup API; the original file is retained. The
+`KnowledgeTrackerApp` folder name is a storage identifier retained for
+compatibility, not the current product name. `AppLocalization` also stores
+language preferences in this folder, so do not rename it without migrating
+existing user data.
 
 The database contains:
 
@@ -384,6 +393,19 @@ dotnet test
 If tests are not present for the affected behavior, consider adding focused tests.
 
 Database changes should be tested against a temporary/test database where practical.
+
+---
+
+## Packaging
+
+The app is published as a self-contained `win-x64` MSIX package through the
+Windows Application Packaging Project in `KnowledgeTrackerDesktop.Package`.
+Packaging requires MSBuild from Visual Studio with the Windows application
+packaging workload; the plain `dotnet` CLI cannot build `.wapproj` projects.
+Use `scripts/build-msix.ps1` and set `SYNCFUSION_LICENSE_KEY` so the license key
+is embedded at build time. The key must never be committed. Keep the MSIX
+`Publisher` in `Package.appxmanifest` in sync with the signing certificate
+subject.
 
 ---
 
