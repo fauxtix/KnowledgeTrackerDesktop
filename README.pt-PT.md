@@ -34,18 +34,22 @@ Este projeto está licenciado ao abrigo da [Licença MIT](LICENSE).
 - Abra uma galeria de imagens a partir da secção de anexos para consultar
   capturas de ecrã e imagens de apoio num carrossel e abrir diretamente o
   ficheiro selecionado.
+- Pré-visualize um excerto de código numa janela dedicada só de leitura antes
+  de o copiar, a par da ação Copiar no editor.
 - Consulte estatísticas de entradas, favoritos, projetos, etiquetas e
   atividade ao longo do tempo.
 - Alterne o idioma da aplicação entre inglês e português (Portugal).
 
 ## Separadores do editor de entradas
 
-O editor divide uma entrada em três separadores para organizar a informação
+O editor divide uma entrada em quatro separadores para organizar a informação
 por assunto e facilitar a sua consulta:
 
 - **Geral** — título e metadados da entrada (projeto, data, tecnologias,
-  etiquetas e estado de favorito), além da descrição em Markdown, código,
-  anexos e comentários.
+  etiquetas e estado de favorito), além da descrição em Markdown, código e
+  comentários.
+- **Anexos** — os ficheiros e imagens associados à entrada, com ações para os
+  abrir ou remover e para consultar imagens numa galeria.
 - **YouTube** — ligação para um vídeo que apoia ou demonstra a solução, guardada
   com a entrada para consulta posterior.
 - **Resoluções** — passos de resolução ordenados que descrevem como o problema

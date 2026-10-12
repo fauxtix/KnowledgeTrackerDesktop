@@ -39,6 +39,67 @@ namespace KnowledgeTrackerDesktop.UI.Theme
         /// <summary>Borders and separators. <c>#2E375E</c></summary>
         public static readonly Color Border = ColorTranslator.FromHtml("#2E375E");
 
+        // --- Semantic button roles (dark-theme button hierarchy) ---
+
+        /// <summary>Primary action base colour (muted steel blue). <c>#427792</c></summary>
+        public static readonly Color Primary = ColorTranslator.FromHtml("#427792");
+
+        /// <summary>Primary action hover. <c>#4E86A0</c></summary>
+        public static readonly Color PrimaryHover = ColorTranslator.FromHtml("#4E86A0");
+
+        /// <summary>Primary action pressed. <c>#345F76</c></summary>
+        public static readonly Color PrimaryPressed = ColorTranslator.FromHtml("#345F76");
+
+        /// <summary>Destructive action base colour (desaturated carmine). <c>#9E5B57</c></summary>
+        public static readonly Color Danger = ColorTranslator.FromHtml("#9E5B57");
+
+        /// <summary>Destructive action hover. <c>#B06D69</c></summary>
+        public static readonly Color DangerHover = ColorTranslator.FromHtml("#B06D69");
+
+        /// <summary>Destructive action pressed. <c>#7C4642</c></summary>
+        public static readonly Color DangerPressed = ColorTranslator.FromHtml("#7C4642");
+
+        /// <summary>Secondary (outlined) button hover surface. <c>#2E375E</c></summary>
+        public static readonly Color SecondaryHover = ColorTranslator.FromHtml("#2E375E");
+
+        /// <summary>Secondary (outlined) button pressed surface. <c>#232B49</c></summary>
+        public static readonly Color SecondaryPressed = ColorTranslator.FromHtml("#232B49");
+
+        /// <summary>Secondary (outlined) button hover border. <c>#3E4A78</c></summary>
+        public static readonly Color SecondaryBorderHover = ColorTranslator.FromHtml("#3E4A78");
+
+        /// <summary>Ghost (tertiary) button hover surface. <c>#232B45</c></summary>
+        public static readonly Color GhostHover = ColorTranslator.FromHtml("#232B45");
+
+        /// <summary>Ghost (tertiary) button pressed surface. <c>#1B2233</c></summary>
+        public static readonly Color GhostPressed = ColorTranslator.FromHtml("#1B2233");
+
+        /// <summary>Ghost (tertiary) button resting outline. Dimmer than <see cref="Border"/> so the faint button reads lighter than an outlined Secondary. <c>#263056</c></summary>
+        public static readonly Color GhostBorder = ColorTranslator.FromHtml("#263056");
+
+        /// <summary>Transparent icon button hover surface (subtle dark grey). <c>#232B45</c></summary>
+        public static readonly Color IconHover = ColorTranslator.FromHtml("#232B45");
+
+        /// <summary>Transparent destructive icon button hover surface (soft carmine). <c>#6E403C</c></summary>
+        public static readonly Color IconDangerHover = ColorTranslator.FromHtml("#6E403C");
+
+        // --- Navigation rail ---
+
+        /// <summary>Selected navigation item surface. <c>#26315A</c></summary>
+        public static readonly Color NavActiveBackground = ColorTranslator.FromHtml("#26315A");
+
+        /// <summary>Selected navigation item hover surface. <c>#2E3C6E</c></summary>
+        public static readonly Color NavActiveHover = ColorTranslator.FromHtml("#2E3C6E");
+
+        /// <summary>Selected navigation item pressed surface. <c>#1F2A4D</c></summary>
+        public static readonly Color NavActivePressed = ColorTranslator.FromHtml("#1F2A4D");
+
+        /// <summary>Disabled button surface. <c>#2E375E</c></summary>
+        public static readonly Color DisabledBack = ColorTranslator.FromHtml("#2E375E");
+
+        /// <summary>Disabled button text. <c>#94A3B8</c></summary>
+        public static readonly Color DisabledText = ColorTranslator.FromHtml("#94A3B8");
+
         /// <summary>Standard corner radius used where a control exposes one.</summary>
         public const int CornerRadius = 8;
     }

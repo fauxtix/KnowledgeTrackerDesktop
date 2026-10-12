@@ -99,9 +99,19 @@ namespace KnowledgeTrackerDesktop.UI.Theme
                     gradientPanel.CornerRadius = CarbonPalette.CornerRadius;
                     break;
                 case SfButton button:
-                    // Modern control: accepts the custom theme name.
+                    // Modern control: accepts the custom theme name. Setting the
+                    // theme name resets Style, so the semantic role is applied
+                    // afterwards (or a neutral secondary look by default).
                     button.ThemeName = CarbonPalette.ThemeName;
                     button.Font = AppTheme.Fonts.Body;
+                    if (ButtonStyler.TryGetRole(button, out _))
+                    {
+                        ButtonStyler.Reapply(button);
+                    }
+                    else
+                    {
+                        ButtonStyler.Apply(button, ButtonRole.Secondary);
+                    }
                     break;
                 case SfDateTimeEdit dateTimeEdit:
                     dateTimeEdit.ThemeName = CarbonPalette.ThemeName;

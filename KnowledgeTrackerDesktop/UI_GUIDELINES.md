@@ -337,6 +337,12 @@ Do not introduce hard-coded colors that conflict with the selected theme.
 
 Reuse existing theme resources and Syncfusion styling.
 
+Express button hierarchy through the semantic roles in `ButtonRole` applied via
+`ButtonStyler` (`Primary`, `Secondary`, `Ghost`, `Danger`, `Nav`, `NavActive`,
+`Icon`, `IconDanger`) rather than assigning colours to individual buttons. The
+concrete button hierarchy and its rules are defined in UI_DESIGN_SPEC section
+10.1.
+
 ---
 
 ## 23. Consistency

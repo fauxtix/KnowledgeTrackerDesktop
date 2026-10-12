@@ -254,7 +254,10 @@ The main UI consists of:
 * `ctlMain`
 * `ctlAddEdit`
 * `ctlManageSteps`
-* statistics UI/control
+* statistics UI/control (`ctlStatistics`)
+* `ImageGalleryForm` (image attachment carousel)
+* `CodePreviewForm` (read-only code snippet preview)
+* `CarbonTheme` / `CarbonPalette` / `ButtonStyler` (theming and semantic button roles)
 * navigation service
 * supporting dialogs/services
 

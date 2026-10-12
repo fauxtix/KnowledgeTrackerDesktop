@@ -31,18 +31,22 @@ This project is licensed under the [MIT License](LICENSE).
   into the database.
 - Open an image gallery from the attachments section to browse supporting
   screenshots and pictures in a carousel and open the selected file directly.
+- Preview a code snippet in a dedicated read-only window before copying it,
+  alongside the Copy action in the editor.
 - View statistics for entries, favorites, projects, tags, and activity over
   time.
 - Switch the application language between English and Portuguese (Portugal).
 
 ## Entry editor tabs
 
-The editor separates an entry into three tabs to keep related information
+The editor separates an entry into four tabs to keep related information
 organized and easier to work with:
 
 - **General** — the entry's title and metadata (project, date, technologies,
-  tags, and favorite status), plus its Markdown description, code, attachments,
-  and comments.
+  tags, and favorite status), plus its Markdown description, code, and
+  comments.
+- **Attachments** — the files and images linked to the entry, with actions to
+  open or remove them and to browse images in a gallery.
 - **YouTube** — a video link that supports or demonstrates the solution, kept
   with the entry for later reference.
 - **Resolutions** — the ordered troubleshooting steps that describe how the

@@ -42,6 +42,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 Anchor = AnchorStyles.Right | AnchorStyles.Top,
             };
             AppLocalization.Bind(close, "Close");
+            ButtonStyler.Apply(close, ButtonRole.Secondary);
 
             var panel = new Panel
             {

@@ -1,5 +1,6 @@
 using KnowledgeTrackerDesktop.Core;
 using KnowledgeTrackerDesktop.UI.Navigation;
+using KnowledgeTrackerDesktop.UI.Theme;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Controls.Styles;
 using Syncfusion.Windows.Forms.Tools;
@@ -84,6 +85,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             };
             AppLocalization.Bind(applyButton, "Apply steps");
             applyButton.Click += (_, _) => ApplyAndReturn();
+            ButtonStyler.Apply(applyButton, ButtonRole.Primary);
 
             var backButton = new SfButton
             {
@@ -92,6 +94,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             };
             AppLocalization.Bind(backButton, "Back");
             backButton.Click += (_, _) => _navigation.GoBack();
+            ButtonStyler.Apply(backButton, ButtonRole.Ghost);
 
             _shell.SetPageTitle("Manage Steps");
             _shell.SetHeaderActions(applyButton, backButton);
@@ -170,6 +173,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _addStepButton.Margin = new Padding(0, 8, 0, 0);
             AppLocalization.Bind(_addStepButton, "+ Add step");
             _addStepButton.Click += (_, _) => AddStep();
+            ButtonStyler.Apply(_addStepButton, ButtonRole.Ghost);
 
             root.Controls.Add(header, 0, 0);
             root.Controls.Add(_scrollHost, 0, 1);
@@ -285,9 +289,9 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
             row.Controls.Add(order, 0, 0);
             row.Controls.Add(description, 1, 0);
-            row.Controls.Add(BuildRowButton("\u2191", index, MoveUp, enabled: index > 0), 2, 0);
-            row.Controls.Add(BuildRowButton("\u2193", index, MoveDown, enabled: index < _working.Count - 1), 3, 0);
-            row.Controls.Add(BuildRowButton("\u2715", index, DeleteAt, enabled: true), 4, 0);
+            row.Controls.Add(BuildRowButton("\u2191", index, MoveUp, enabled: index > 0, ButtonRole.Icon), 2, 0);
+            row.Controls.Add(BuildRowButton("\u2193", index, MoveDown, enabled: index < _working.Count - 1, ButtonRole.Icon), 3, 0);
+            row.Controls.Add(BuildRowButton("\u2715", index, DeleteAt, enabled: true, ButtonRole.IconDanger), 4, 0);
             return row;
         }
 
@@ -318,18 +322,19 @@ namespace KnowledgeTrackerDesktop.UI.Views
             style.ArrowButtonPressedForeColor = AppTheme.PrimaryText;
         }
 
-        private SfButton BuildRowButton(string text, int index, Action<int> action, bool enabled)
+        private SfButton BuildRowButton(string text, int index, Action<int> action, bool enabled, ButtonRole role)
         {
             var button = new SfButton
             {
                 Text = text,
                 AutoSize = false,
-                Size = new Size(30, 28),
+                Size = new Size(32, 32),
                 Anchor = AnchorStyles.Top,
                 Enabled = enabled,
                 Margin = new Padding(2, 2, 0, 0),
             };
             button.Click += (_, _) => action(index);
+            ButtonStyler.Apply(button, role);
             return button;
         }
 

@@ -80,6 +80,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             };
             AppLocalization.Bind(addButton, "+ New Entry");
             addButton.Click += (_, _) => OpenNewEntry();
+            ButtonStyler.Apply(addButton, ButtonRole.Primary);
 
             _shell.SetPageTitle("Library");
             _shell.SetHeaderActions(addButton);
@@ -129,7 +130,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             {
                 Dock = DockStyle.Fill,
                 FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = true,
+                WrapContents = false,
                 AutoScroll = false,
                 Padding = new Padding(0, 4, 0, 4),
             };
@@ -197,12 +198,12 @@ namespace KnowledgeTrackerDesktop.UI.Views
         private void ConfigureToggleButton(SfButton button, string text)
         {
             AppLocalization.Bind(button, text);
+            button.AutoSize = false;
             button.Size = new Size(110, 38);
             button.Font = AppTheme.Fonts.Body;
-            button.Style.BackColor = AppTheme.Surface;
-            button.Style.ForeColor = AppTheme.PrimaryText;
             button.Anchor = AnchorStyles.Left;
             button.Margin = new Padding(0, 5, 8, 5);
+            ButtonStyler.Apply(button, ButtonRole.Secondary);
         }
 
         private void BuildTagsDropDown()
@@ -328,6 +329,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _retryButton.Size = new Size(120, 32);
             _retryButton.Visible = false;
             _retryButton.Click += async (_, _) => await LoadAsync();
+            ButtonStyler.Apply(_retryButton, ButtonRole.Primary);
 
             stateContent.Controls.Add(_stateLabel);
             stateContent.Controls.Add(_retryButton);

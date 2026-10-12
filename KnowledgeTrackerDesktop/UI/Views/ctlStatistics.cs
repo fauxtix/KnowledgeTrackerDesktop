@@ -2,6 +2,7 @@ using System.Diagnostics;
 using KnowledgeTrackerDesktop.Core;
 using KnowledgeTrackerDesktop.Services;
 using KnowledgeTrackerDesktop.UI.Navigation;
+using KnowledgeTrackerDesktop.UI.Theme;
 using Syncfusion.Drawing;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.Windows.Forms.Chart;
@@ -316,6 +317,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _retryButton.Size = new Size(120, 32);
             _retryButton.Margin = new Padding(0, 0, 8, 0);
             _retryButton.Click += async (_, _) => await LoadAsync();
+            ButtonStyler.Apply(_retryButton, ButtonRole.Primary);
 
             AppLocalization.Bind(_createButton, "+ Create entry");
             _createButton.Size = new Size(130, 32);
@@ -323,12 +325,14 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _createButton.Click += (_, _) =>
                 _navigation.NavigateTo<ctlAddEdit>(
                     new EntryEditorRequest(new KnowledgeEntry()));
+            ButtonStyler.Apply(_createButton, ButtonRole.Primary);
 
             AppLocalization.Bind(_libraryButton, "Open Library");
             _libraryButton.Size = new Size(120, 32);
             _libraryButton.Margin = Padding.Empty;
             _libraryButton.Click += (_, _) =>
                 _navigation.NavigateToPrimary<ctlMain>(new LibraryNavigationRequest());
+            ButtonStyler.Apply(_libraryButton, ButtonRole.Secondary);
 
             _stateActions.FlowDirection = FlowDirection.LeftToRight;
             _stateActions.AutoSize = true;
@@ -431,6 +435,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
                     };
                     button.Click += (_, _) => onSelect(name);
                     list.Controls.Add(button);
+                    ButtonStyler.Apply(button, ButtonRole.Ghost);
                     list.RowStyles.Add(new RowStyle(SizeType.Absolute, 34f));
                 }
             }

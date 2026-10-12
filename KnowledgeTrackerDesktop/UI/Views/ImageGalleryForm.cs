@@ -100,6 +100,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _open.Margin = new Padding(8, 0, 0, 0);
             AppLocalization.Bind(_open, "Open");
             _open.Click += (_, _) => OpenFocused();
+            ButtonStyler.Apply(_open, ButtonRole.Primary);
 
             var close = new SfButton
             {
@@ -110,6 +111,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 Margin = new Padding(8, 0, 0, 0),
             };
             AppLocalization.Bind(close, "Close");
+            ButtonStyler.Apply(close, ButtonRole.Secondary);
 
             var actions = new FlowLayoutPanel
             {

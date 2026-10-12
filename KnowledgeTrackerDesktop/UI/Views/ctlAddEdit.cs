@@ -124,6 +124,9 @@ namespace KnowledgeTrackerDesktop.UI.Views
             AppLocalization.Bind(cancel, "Cancel");
             AppLocalization.Bind(back, "Back");
             back.Click += (_, _) => Cancel();
+            ButtonStyler.Apply(_saveButton, ButtonRole.Primary);
+            ButtonStyler.Apply(cancel, ButtonRole.Secondary);
+            ButtonStyler.Apply(back, ButtonRole.Ghost);
 
             _shell.SetPageTitle(_isNew ? "New Entry" : "Edit Entry");
             _shell.SetHeaderActions(_saveButton, cancel, back);
@@ -504,6 +507,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             };
             AppLocalization.Bind(add, "+ Add step");
             add.Click += (_, _) => AddStep();
+            ButtonStyler.Apply(add, ButtonRole.Ghost);
 
             var row = new TableLayoutPanel
             {
@@ -625,25 +629,26 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
             row.Controls.Add(order, 0, 0);
             row.Controls.Add(description, 1, 0);
-            row.Controls.Add(BuildStepButton("\u2191", index, MoveStepUp, index > 0), 2, 0);
-            row.Controls.Add(BuildStepButton("\u2193", index, MoveStepDown, index < _workingSteps.Count - 1), 3, 0);
-            row.Controls.Add(BuildStepButton("\u2715", index, RemoveStep, true), 4, 0);
+            row.Controls.Add(BuildStepButton("\u2191", index, MoveStepUp, index > 0, ButtonRole.Icon), 2, 0);
+            row.Controls.Add(BuildStepButton("\u2193", index, MoveStepDown, index < _workingSteps.Count - 1, ButtonRole.Icon), 3, 0);
+            row.Controls.Add(BuildStepButton("\u2715", index, RemoveStep, true, ButtonRole.IconDanger), 4, 0);
             CarbonTheme.Apply(row);
             return row;
         }
 
-        private SfButton BuildStepButton(string text, int index, Action<int> action, bool enabled)
+        private SfButton BuildStepButton(string text, int index, Action<int> action, bool enabled, ButtonRole role)
         {
             var button = new SfButton
             {
                 Text = text,
                 AutoSize = false,
-                Size = new Size(30, 28),
+                Size = new Size(32, 32),
                 Anchor = AnchorStyles.Top,
                 Enabled = enabled,
                 Margin = new Padding(2, 2, 0, 0),
             };
             button.Click += (_, _) => action(index);
+            ButtonStyler.Apply(button, role);
             return button;
         }
 
@@ -721,6 +726,9 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _code.TextChanged += (_, _) => preview.Enabled = !string.IsNullOrEmpty(_code.Text);
             preview.Click += (_, _) => PreviewCode();
 
+            ButtonStyler.Apply(copy, ButtonRole.Secondary);
+            ButtonStyler.Apply(preview, ButtonRole.Secondary);
+
             var actions = new FlowLayoutPanel
             {
                 AutoSize = true,
@@ -781,6 +789,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _openVideo.Enabled = false;
             _openVideo.Margin = new Padding(8, 0, 0, 0);
             _openVideo.Click += (_, _) => OpenUrl(_youtube.Text);
+            ButtonStyler.Apply(_openVideo, ButtonRole.Secondary);
 
             var row = new TableLayoutPanel
             {
@@ -818,6 +827,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             };
             AppLocalization.Bind(add, "+ Add file");
             add.Click += (_, _) => AddAttachment();
+            ButtonStyler.Apply(add, ButtonRole.Ghost);
 
             _openGallery.AutoSize = true;
             _openGallery.MinimumSize = new Size(120, 28);
@@ -827,6 +837,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _openGallery.Enabled = false;
             AppLocalization.Bind(_openGallery, "Open gallery");
             _openGallery.Click += (_, _) => OpenGallery();
+            ButtonStyler.Apply(_openGallery, ButtonRole.Secondary);
 
             var actions = new FlowLayoutPanel
             {
@@ -1023,6 +1034,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             };
             AppLocalization.Bind(open, "Open");
             open.Click += (_, _) => OpenAttachment(attachment);
+            ButtonStyler.Apply(open, ButtonRole.Secondary);
 
             var remove = new SfButton
             {
@@ -1033,6 +1045,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             };
             AppLocalization.Bind(remove, "Remove");
             remove.Click += (_, _) => RemoveAttachment(attachment);
+            ButtonStyler.Apply(remove, ButtonRole.Danger);
 
             var row = new TableLayoutPanel
             {

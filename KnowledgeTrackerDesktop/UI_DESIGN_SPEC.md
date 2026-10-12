@@ -709,6 +709,37 @@ Use theme-aware colors for:
 
 Standard WinForms controls may be used when appropriate, but their visual treatment must remain consistent with the Syncfusion-based application.
 
+## 10.1 Button hierarchy
+
+Buttons communicate their functional weight through a small set of semantic
+roles rather than one static colour per button. The roles are defined by
+`ButtonRole` and applied centrally by `ButtonStyler`, which derives the normal,
+hover, pressed, focused and disabled colours from the `CarbonPalette`.
+
+| Role | Use for | Treatment |
+| --- | --- | --- |
+| `Primary` | The main call to action on a screen (Save, Create entry, Retry). | Filled with the accent colour. |
+| `Secondary` | Supporting actions with less weight (Cancel, Open, Copy, Preview). | Outlined neutral surface. |
+| `Ghost` | Tertiary/text actions (Back, Add step). | Text only, faint outline. |
+| `Danger` | Destructive actions (Remove, Delete). | Filled with the muted destructive colour. |
+| `Nav` | Navigation rail item in its resting state. | Blends with the sidebar, muted label. |
+| `NavActive` | Navigation rail item for the displayed view. | Highlighted surface with accent outline. |
+| `Icon` | Transparent icon-only actions (move up/down). | No chrome; tinted hover. |
+| `IconDanger` | Transparent icon-only destructive actions (remove row). | No chrome; destructive tint. |
+
+Rules:
+
+- Every button should be assigned exactly one role through `ButtonStyler`.
+- A button without an explicit role defaults to `Secondary`; assigning a role
+  is preferred so the hierarchy stays explicit.
+- Do not give every button the same filled colour, and do not use the primary
+  accent for secondary actions.
+- Use `Danger`/`IconDanger` only for genuinely destructive actions.
+- Flat WinForms buttons (for example the language selector) use the equivalent
+  role through `ButtonStyler.ApplyFlat`.
+- Assigning `SfButton.ThemeName` resets its style, so `CarbonTheme` re-applies
+  the remembered role after theming.
+
 ---
 
 # 11. Error Presentation

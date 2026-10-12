@@ -30,6 +30,8 @@ namespace KnowledgeTrackerDesktop.UI.Shell
         private readonly PageTitlePanel _titlePanel;
         private readonly Panel _contentHost;
         private readonly Label _placeholder;
+        private SfButton? _libraryNavButton;
+        private SfButton? _statisticsNavButton;
 
         public frmMain()
         {
@@ -63,7 +65,7 @@ namespace KnowledgeTrackerDesktop.UI.Shell
                 TextAlign = ContentAlignment.MiddleLeft,
                 Text = "KnowledgeTracker",
                 ForeColor = AppTheme.PrimaryText,
-                Font = new Font("Segoe UI", 22f, FontStyle.Bold),
+                Font = new Font("Segoe UI", 26f, FontStyle.Bold),
             };
             AppLocalization.Bind(_pageTitle, "KnowledgeTracker");
 
@@ -136,7 +138,8 @@ namespace KnowledgeTrackerDesktop.UI.Shell
                 AutoSize = false,
                 TextAlign = ContentAlignment.MiddleLeft,
                 Text = "KnowledgeTracker",
-                Font = new Font(Font.FontFamily, 10f, FontStyle.Bold),
+                ForeColor = AppTheme.Accent,
+                Font = new Font("Segoe UI", 15f, FontStyle.Bold),
             };
 
             _navItems = new FlowLayoutPanel
@@ -206,6 +209,8 @@ namespace KnowledgeTrackerDesktop.UI.Shell
             _contentHost.ResumeLayout();
 
             CarbonTheme.Apply(view);
+
+            SetActiveNav(view.GetType());
 
             view.Visible = true;
 
@@ -307,10 +312,12 @@ namespace KnowledgeTrackerDesktop.UI.Shell
             navigation.Controls.Add(_navItems, 0, 1);
             navigation.Controls.Add(_languageOptions, 0, 2);
 
-            _navItems.Controls.Add(BuildNavButton("Library", () =>
-                Navigation?.NavigateToPrimary<ctlMain>(new LibraryNavigationRequest())));
-            _navItems.Controls.Add(BuildNavButton("Statistics", () =>
-                Navigation?.NavigateToPrimary<ctlStatistics>()));
+            _libraryNavButton = BuildNavButton("Library", () =>
+                Navigation?.NavigateToPrimary<ctlMain>(new LibraryNavigationRequest()));
+            _statisticsNavButton = BuildNavButton("Statistics", () =>
+                Navigation?.NavigateToPrimary<ctlStatistics>());
+            _navItems.Controls.Add(_libraryNavButton);
+            _navItems.Controls.Add(_statisticsNavButton);
 
             return navigation;
         }
@@ -320,12 +327,62 @@ namespace KnowledgeTrackerDesktop.UI.Shell
             var button = new SfButton
             {
                 AutoSize = false,
-                Size = new Size(188, 40),
+                Size = new Size(178, 40),
                 Margin = new Padding(0, 0, 0, 4),
             };
             AppLocalization.Bind(button, text);
             button.Click += (_, _) => onClick();
+            ButtonStyler.Apply(button, ButtonRole.Nav);
             return button;
+        }
+
+        /// <summary>
+        /// Highlights the rail item for the displayed primary view. Called on every
+        /// navigation so the selection survives Syncfusion re-applying the theme
+        /// when the content area changes. Secondary views (e.g. the editor) keep
+        /// the Library item selected.
+        /// </summary>
+        private void SetActiveNav(Type viewType)
+        {
+            // Navigation is normally triggered from a navigation button's Click
+            // handler; restyling that button while it is still processing the
+            // click throws inside Syncfusion's GDI+ paint callback, so the visual
+            // update is deferred until the message has been fully handled.
+            if (IsDisposed)
+            {
+                return;
+            }
+
+            if (IsHandleCreated)
+            {
+                BeginInvoke((Action)(() => ApplyActiveNav(viewType)));
+            }
+            else
+            {
+                ApplyActiveNav(viewType);
+            }
+        }
+
+        private void ApplyActiveNav(Type viewType)
+        {
+            if (IsDisposed)
+            {
+                return;
+            }
+
+            var statisticsActive = viewType == typeof(ctlStatistics);
+            ApplyNavState(_libraryNavButton, !statisticsActive);
+            ApplyNavState(_statisticsNavButton, statisticsActive);
+        }
+
+        private static void ApplyNavState(SfButton? button, bool active)
+        {
+            if (button is null || button.IsDisposed)
+            {
+                return;
+            }
+
+            ButtonStyler.Apply(button, active ? ButtonRole.NavActive : ButtonRole.Nav);
         }
 
         private static Button BuildLanguageButton(
@@ -344,18 +401,12 @@ namespace KnowledgeTrackerDesktop.UI.Shell
                 Text = abbreviation,
                 TextAlign = ContentAlignment.MiddleRight,
                 TextImageRelation = TextImageRelation.ImageBeforeText,
-                FlatStyle = FlatStyle.Flat,
-                BackColor = CarbonPalette.Surface,
-                ForeColor = CarbonPalette.TextPrimary,
                 Font = AppTheme.Fonts.Input,
                 AccessibleName = accessibleName,
                 AccessibleDescription = $"Select {accessibleName}",
                 Tag = language,
-                UseVisualStyleBackColor = false,
             };
-            button.FlatAppearance.BorderColor = CarbonPalette.Border;
-            button.FlatAppearance.BorderSize = 1;
-            button.FlatAppearance.MouseOverBackColor = CarbonPalette.Border;
+            ButtonStyler.ApplyFlat(button, ButtonRole.Secondary);
             return button;
         }
 
@@ -404,13 +455,9 @@ namespace KnowledgeTrackerDesktop.UI.Shell
                 : _englishLanguageButton;
             foreach (var button in new[] { _englishLanguageButton, _portugueseLanguageButton })
             {
-                button.BackColor = ReferenceEquals(button, activeButton)
-                    ? CarbonPalette.Accent
-                    : CarbonPalette.Surface;
-                button.FlatAppearance.BorderColor = ReferenceEquals(button, activeButton)
-                    ? CarbonPalette.AccentAlt
-                    : CarbonPalette.Border;
-                button.FlatAppearance.BorderSize = ReferenceEquals(button, activeButton) ? 2 : 1;
+                ButtonStyler.ApplyFlat(
+                    button,
+                    ReferenceEquals(button, activeButton) ? ButtonRole.Primary : ButtonRole.Secondary);
             }
         }
 
