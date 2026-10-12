@@ -298,7 +298,7 @@ Potential metrics:
 * projects
 * tags
 
-Charts should remain readable with realistic personal datasets. Use syncfusion charting controls.
+Charts should remain readable with realistic personal datasets. The activity chart is drawn in-app (GDI+) and must stay consistent with the CarbonDark palette and typography; it must render reliably in both development and packaged builds.
 
 ---
 

@@ -31,6 +31,8 @@ namespace KnowledgeTrackerDesktop.UI
 
         public static Color AccentAlt => CarbonPalette.AccentAlt;
 
+        public static Color Success => CarbonPalette.Success;
+
         public static Color ChipBackground => CarbonPalette.Border;
 
         public static Color FavoriteOn => Color.FromArgb(240, 173, 0);

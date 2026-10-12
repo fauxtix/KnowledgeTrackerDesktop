@@ -19,6 +19,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
         private const double OpenDebounceMs = 500;
 
         private readonly Label _favorite;
+        private readonly Label _delete;
         private readonly ContextMenuStrip _contextMenu;
         private bool _isSelected;
         private DateTime _lastOpenAt = DateTime.MinValue;
@@ -54,6 +55,22 @@ namespace KnowledgeTrackerDesktop.UI.Views
             };
             _favorite.Click += (_, _) => FavoriteRequested?.Invoke(this);
             RefreshFavorite();
+
+            _delete = new Label
+            {
+                AutoSize = false,
+                Size = new Size(28, 28),
+                BackColor = Color.Transparent,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Segoe MDL2 Assets", 12f),
+                Text = "\uE74D",
+                ForeColor = AppTheme.SecondaryText,
+                Cursor = Cursors.Hand,
+                AccessibleName = AppLocalization.Translate("Delete"),
+            };
+            _delete.Click += (_, _) => DeleteRequested?.Invoke(this);
+            _delete.MouseEnter += (_, _) => _delete.ForeColor = AppTheme.Error;
+            _delete.MouseLeave += (_, _) => _delete.ForeColor = AppTheme.SecondaryText;
 
             _contextMenu = BuildContextMenu();
 
@@ -164,7 +181,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
         /// </summary>
         private void WireMouseEvents(Control control)
         {
-            if (control == _favorite)
+            if (control == _favorite || control == _delete)
             {
                 return;
             }
@@ -241,11 +258,24 @@ namespace KnowledgeTrackerDesktop.UI.Views
             content.Controls.Add(counts, 0, content.RowCount);
             content.RowCount++;
 
-            _favorite.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            _favorite.Margin = new Padding(6, 0, 0, 0);
+            _favorite.Margin = Padding.Empty;
+            _delete.Margin = Padding.Empty;
+
+            var actions = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                BackColor = Color.Transparent,
+                Margin = new Padding(6, 0, 0, 0),
+            };
+            actions.Controls.Add(_favorite);
+            actions.Controls.Add(_delete);
 
             outer.Controls.Add(content, 0, 0);
-            outer.Controls.Add(_favorite, 1, 0);
+            outer.Controls.Add(actions, 1, 0);
             return outer;
         }
 

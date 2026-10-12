@@ -3,9 +3,7 @@ using KnowledgeTrackerDesktop.Core;
 using KnowledgeTrackerDesktop.Services;
 using KnowledgeTrackerDesktop.UI.Navigation;
 using KnowledgeTrackerDesktop.UI.Theme;
-using Syncfusion.Drawing;
 using Syncfusion.WinForms.Controls;
-using Syncfusion.Windows.Forms.Chart;
 
 namespace KnowledgeTrackerDesktop.UI.Views
 {
@@ -31,11 +29,11 @@ namespace KnowledgeTrackerDesktop.UI.Views
         private readonly Panel _contentHost = new();
         private readonly TableLayoutPanel _content = new();
         private readonly TableLayoutPanel _kpiRow = new();
-        private readonly Label _totalValue = new();
-        private readonly Label _favoriteValue = new();
-        private readonly Label _projectValue = new();
-        private readonly Label _tagValue = new();
-        private readonly ChartControl _activityChart = new();
+        private readonly KpiCard _totalCard = new("Total entries", AppTheme.Accent);
+        private readonly KpiCard _favoriteCard = new("Favorites", AppTheme.FavoriteOn);
+        private readonly KpiCard _projectCard = new("Projects", AppTheme.AccentAlt);
+        private readonly KpiCard _tagCard = new("Tags", AppTheme.Success);
+        private readonly ActivityChart _activityChart = new();
         private readonly Panel _activityChartHost = new();
         private readonly Label _activityEmptyLabel = new();
         private readonly TableLayoutPanel _projectsList = new();
@@ -115,7 +113,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
         {
             _contentHost.Dock = DockStyle.Fill;
             _contentHost.AutoScroll = true;
-            _contentHost.BackColor = AppTheme.Surface;
+            _contentHost.BackColor = AppTheme.Background;
 
             _content.Dock = DockStyle.Top;
             _content.AutoSize = true;
@@ -124,6 +122,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
             _content.Margin = Padding.Empty;
             _content.Padding = Padding.Empty;
+            _content.BackColor = AppTheme.Background;
 
             _content.Controls.Add(BuildKpiRow());
             _content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -149,57 +148,29 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _kpiRow.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             _kpiRow.ColumnCount = 4;
             _kpiRow.RowCount = 1;
-            _kpiRow.Margin = new Padding(0, 0, 0, 8);
+            _kpiRow.Margin = new Padding(0, 0, 0, 10);
+            _kpiRow.BackColor = AppTheme.Background;
             for (var index = 0; index < 4; index++)
             {
                 _kpiRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
             }
 
-            _kpiRow.Controls.Add(BuildKpiCard("Total entries", _totalValue), 0, 0);
-            _kpiRow.Controls.Add(BuildKpiCard("Favorites", _favoriteValue), 1, 0);
-            _kpiRow.Controls.Add(BuildKpiCard("Projects", _projectValue), 2, 0);
-            _kpiRow.Controls.Add(BuildKpiCard("Tags", _tagValue), 3, 0);
+            _kpiRow.RowStyles.Add(new RowStyle(SizeType.Absolute, 92f));
+
+            _totalCard.Dock = DockStyle.Fill;
+            _favoriteCard.Dock = DockStyle.Fill;
+            _projectCard.Dock = DockStyle.Fill;
+            _tagCard.Dock = DockStyle.Fill;
+            _totalCard.Margin = new Padding(0, 0, 10, 0);
+            _favoriteCard.Margin = new Padding(0, 0, 10, 0);
+            _projectCard.Margin = new Padding(0, 0, 10, 0);
+            _tagCard.Margin = Padding.Empty;
+
+            _kpiRow.Controls.Add(_totalCard, 0, 0);
+            _kpiRow.Controls.Add(_favoriteCard, 1, 0);
+            _kpiRow.Controls.Add(_projectCard, 2, 0);
+            _kpiRow.Controls.Add(_tagCard, 3, 0);
             return _kpiRow;
-        }
-
-        private Control BuildKpiCard(string caption, Label valueLabel)
-        {
-            valueLabel.AutoSize = false;
-            valueLabel.Dock = DockStyle.Fill;
-            valueLabel.Text = "0";
-            valueLabel.TextAlign = ContentAlignment.MiddleLeft;
-            valueLabel.ForeColor = AppTheme.Accent;
-            valueLabel.Font = new Font(Font.FontFamily, 22f, FontStyle.Bold);
-            valueLabel.Margin = Padding.Empty;
-
-            var captionLabel = new Label
-            {
-                AutoSize = false,
-                Dock = DockStyle.Fill,
-                Text = caption,
-                TextAlign = ContentAlignment.MiddleLeft,
-                ForeColor = AppTheme.SecondaryText,
-                Font = new Font(Font.FontFamily, 9f, FontStyle.Regular),
-                Margin = Padding.Empty,
-            };
-            AppLocalization.Bind(captionLabel, caption);
-
-            var card = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                ColumnCount = 1,
-                RowCount = 2,
-                Height = 92,
-                Margin = new Padding(0, 0, 8, 0),
-                Padding = new Padding(12, 6, 12, 6),
-                BackColor = AppTheme.Surface,
-            };
-            card.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
-            card.RowStyles.Add(new RowStyle(SizeType.Percent, 62f));
-            card.RowStyles.Add(new RowStyle(SizeType.Percent, 38f));
-            card.Controls.Add(valueLabel, 0, 0);
-            card.Controls.Add(captionLabel, 0, 1);
-            return card;
         }
 
         private static Label BuildSectionHeader(string text)
@@ -222,21 +193,11 @@ namespace KnowledgeTrackerDesktop.UI.Views
         {
             _activityChartHost.Dock = DockStyle.Fill;
             _activityChartHost.BackColor = AppTheme.Surface;
+            _activityChartHost.Padding = new Padding(10, 6, 10, 6);
             _activityChartHost.Margin = new Padding(0, 0, 0, 8);
 
             _activityChart.Dock = DockStyle.Fill;
             _activityChart.BackColor = AppTheme.Surface;
-            _activityChart.ShowLegend = false;
-            _activityChart.ShowToolTips = true;
-            _activityChart.PrimaryXAxis.ValueType = ChartValueType.Category;
-            _activityChart.PrimaryXAxis.ForeColor = AppTheme.SecondaryText;
-            _activityChart.PrimaryXAxis.Font = AppTheme.Fonts.Caption;
-            _activityChart.PrimaryXAxis.TickColor = AppTheme.CardBorder;
-            _activityChart.PrimaryYAxis.ForeColor = AppTheme.SecondaryText;
-            _activityChart.PrimaryYAxis.Font = AppTheme.Fonts.Caption;
-            _activityChart.PrimaryYAxis.TickColor = AppTheme.CardBorder;
-            _activityChart.PrimaryYAxis.DrawGrid = true;
-            _activityChart.ChartArea.BackInterior = new BrushInfo(AppTheme.Surface);
 
             _activityEmptyLabel.Dock = DockStyle.Fill;
             _activityEmptyLabel.TextAlign = ContentAlignment.MiddleCenter;
@@ -358,10 +319,10 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 return;
             }
 
-            _totalValue.Text = summary.TotalEntries.ToString();
-            _favoriteValue.Text = summary.FavoriteEntries.ToString();
-            _projectValue.Text = summary.TotalProjects.ToString();
-            _tagValue.Text = summary.TotalTags.ToString();
+            _totalCard.Value = summary.TotalEntries.ToString();
+            _favoriteCard.Value = summary.FavoriteEntries.ToString();
+            _projectCard.Value = summary.TotalProjects.ToString();
+            _tagCard.Value = summary.TotalTags.ToString();
 
             PopulateActivityChart(summary.EntriesByMonth);
             PopulateList(_projectsList, summary.TopProjects, "No projects yet.", OpenLibraryProject);
@@ -373,18 +334,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
         private void PopulateActivityChart(IReadOnlyList<MonthCount> months)
         {
-            _activityChart.Series.Clear();
-
-            var series = new ChartSeries(AppLocalization.Translate("Entries"), ChartSeriesType.Column);
-            series.Style.Interior = new BrushInfo(AppTheme.Accent);
-            var index = 0;
-            foreach (var month in months)
-            {
-                series.Points.Add(new ChartPoint(index, month.Count, MonthLabel(month)));
-                index++;
-            }
-
-            _activityChart.Series.Add(series);
+            _activityChart.SetMonths(months);
             _activityEmptyLabel.Visible = months.All(month => month.Count == 0);
             if (_activityEmptyLabel.Visible)
             {
@@ -425,26 +375,17 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 foreach (var item in items)
                 {
                     var name = item.Name;
-                    var button = new SfButton
+                    var row = new StatListRow(item.Name, item.Count, () => onSelect(name))
                     {
-                        Text = $"{item.Name}    {item.Count}",
-                        AutoSize = false,
                         Dock = DockStyle.Fill,
-                        Height = 30,
-                        Margin = new Padding(0, 0, 0, 4),
                     };
-                    button.Click += (_, _) => onSelect(name);
-                    list.Controls.Add(button);
-                    ButtonStyler.Apply(button, ButtonRole.Ghost);
+                    list.Controls.Add(row);
                     list.RowStyles.Add(new RowStyle(SizeType.Absolute, 34f));
                 }
             }
 
             list.ResumeLayout();
         }
-
-        private static string MonthLabel(MonthCount month) =>
-            new DateTime(month.Year, month.Month, 1).ToString("MMM yyyy", AppLocalization.Culture);
 
         private void OpenLibraryProject(string project) =>
             _navigation.NavigateTo<ctlMain>(new LibraryNavigationRequest(ProjectName: project));

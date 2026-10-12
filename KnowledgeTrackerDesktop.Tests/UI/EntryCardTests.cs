@@ -106,6 +106,28 @@ namespace KnowledgeTrackerDesktop.Tests.UI
         }
 
         [Fact]
+        public void DeleteAffordanceDoesNotSelectOrOpenAndRaisesDelete()
+        {
+            using var card = new EntryCard(new KnowledgeEntry { Id = 4, Title = "Delete me" });
+            var selected = false;
+            var opened = false;
+            var deleted = false;
+            card.Selected += _ => selected = true;
+            card.OpenRequested += _ => opened = true;
+            card.DeleteRequested += _ => deleted = true;
+            var delete = FindControls(card)
+                .OfType<Label>()
+                .Single(control => control.AccessibleName == "Delete");
+
+            InvokeMouseDown(delete, MouseButtons.Left);
+            InvokeOnClick(delete);
+
+            Assert.False(selected);
+            Assert.False(opened);
+            Assert.True(deleted);
+        }
+
+        [Fact]
         public void LeftClickSelectsAndOpensTheCardEntry()
         {
             using var card = new EntryCard(new KnowledgeEntry { Id = 7, Title = "Open me" });

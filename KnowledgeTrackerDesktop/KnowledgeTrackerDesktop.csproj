@@ -46,7 +46,6 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
     <PackageReference Include="Syncfusion.Core.WinForms" Version="35.1.39" />
     <PackageReference Include="Syncfusion.Grid.Windows" Version="35.1.39" />
-    <PackageReference Include="Syncfusion.Chart.Windows" Version="35.1.39" />
     <PackageReference Include="Syncfusion.Tools.Windows" Version="35.1.39" />
     <PackageReference Include="Syncfusion.SfInput.WinForms" Version="35.1.39" />
     <PackageReference Include="Syncfusion.SfListView.WinForms" Version="35.1.39" />

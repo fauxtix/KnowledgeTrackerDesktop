@@ -30,6 +30,9 @@ namespace KnowledgeTrackerDesktop.UI.Theme
         /// <summary>Secondary accent (cyan). <c>#06B6D4</c></summary>
         public static readonly Color AccentAlt = ColorTranslator.FromHtml("#06B6D4");
 
+        /// <summary>Success / positive accent (green), used for dashboard data accents. <c>#22C55E</c></summary>
+        public static readonly Color Success = ColorTranslator.FromHtml("#22C55E");
+
         /// <summary>Primary text. <c>#F8FAFC</c></summary>
         public static readonly Color TextPrimary = ColorTranslator.FromHtml("#F8FAFC");
 
