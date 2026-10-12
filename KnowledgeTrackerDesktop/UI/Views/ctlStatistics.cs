@@ -181,7 +181,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 Dock = DockStyle.Fill,
                 Height = 26,
                 TextAlign = ContentAlignment.MiddleLeft,
-                ForeColor = AppTheme.PrimaryText,
+                ForeColor = AppTheme.Accent,
                 Font = new Font(SystemFonts.DefaultFont.FontFamily, 10f, FontStyle.Bold),
                 Margin = new Padding(0, 4, 0, 4),
             };
@@ -353,7 +353,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             list.SuspendLayout();
             list.Controls.Clear();
             list.RowStyles.Clear();
-            list.RowCount = 0;
+            list.ColumnCount = 1;
 
             if (items.Count == 0)
             {
@@ -367,24 +367,30 @@ namespace KnowledgeTrackerDesktop.UI.Views
                     Margin = new Padding(0, 4, 0, 4),
                 };
                 AppLocalization.Bind(emptyLabel, emptyText);
-                list.Controls.Add(emptyLabel);
-                list.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                list.RowCount = 2;
+                list.Controls.Add(emptyLabel, 0, 0);
+                list.RowStyles.Add(new RowStyle(SizeType.Absolute, 34f));
+                list.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
             }
             else
             {
-                foreach (var item in items)
+                list.RowCount = items.Count + 1;
+                for (var index = 0; index < items.Count; index++)
                 {
+                    var item = items[index];
                     var name = item.Name;
                     var row = new StatListRow(item.Name, item.Count, () => onSelect(name))
                     {
                         Dock = DockStyle.Fill,
                     };
-                    list.Controls.Add(row);
+                    list.Controls.Add(row, 0, index);
                     list.RowStyles.Add(new RowStyle(SizeType.Absolute, 34f));
                 }
+
+                list.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
             }
 
-            list.ResumeLayout();
+            list.ResumeLayout(true);
         }
 
         private void OpenLibraryProject(string project) =>

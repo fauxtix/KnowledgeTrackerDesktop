@@ -396,6 +396,19 @@ Database changes should be tested against a temporary/test database where practi
 
 ---
 
+## Backup Plan Before Changes
+
+Before making any code change, create or update `RUNTIME_ERROR_HANDOFF.md` in the
+repository root. It is a short handoff note recording the objective, the changes
+made, the verification state and the next steps.
+
+After committing and pushing successfully, delete the file; recreate it before
+the next change.
+
+This file is a working/handoff note only and must **never** be committed.
+
+---
+
 ## Packaging
 
 The app is published as a self-contained `win-x64` MSIX package through the
