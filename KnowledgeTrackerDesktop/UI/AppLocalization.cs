@@ -23,17 +23,30 @@ namespace KnowledgeTrackerDesktop.UI
 
         private static readonly Dictionary<string, string> PortugueseText = new(StringComparer.Ordinal)
         {
-            ["Your knowledge library will appear here."] = "A sua biblioteca de conhecimento aparecerá aqui.",
+            ["Your knowledge library will appear here."] = "A sua biblioteca de conhecimento aparecerÃ¡ aqui.",
             ["Library"] = "Biblioteca",
             ["Statistics"] = "Estatísticas",
             ["The language preference could not be saved."] = "Não foi possível guardar a preferência de idioma.",
-            ["The Syncfusion license key was not found. Set SYNCFUSION_LICENSE_KEY in your User or Machine environment variables, then restart the application."] =
-                "A chave de licença Syncfusion não foi encontrada. Defina SYNCFUSION_LICENSE_KEY nas variáveis de ambiente do utilizador ou do sistema e reinicie a aplicação.",
-            ["The knowledge base could not be opened. Please try again."] =
-                "Não foi possível abrir a base de conhecimento. Tente novamente.",
+            ["The language preference could not be saved."] = "Não foi possível guardar a preferência de idioma.",
+            ["The Syncfusion license key was not found. Set SYNCFUSION_LICENSE_KEY in your User or Machine environment variables, then restart the application."] = "A chave de licença Syncfusion não foi encontrada. Defina SYNCFUSION_LICENSE_KEY nas variáveis de ambiente do utilizador ou do sistema e reinicie a aplicação.",
+            ["The knowledge base could not be opened. Please try again."] = "Não foi possível abrir a base de conhecimento. Tente novamente.",
+            ["Não foi possível abrir a base de conhecimento. Tente novamente."] = "Não foi possível abrir a base de conhecimento. Tente novamente.",
+            ["The knowledge base was created by a newer version of KnowledgeTracker. Update the application and try again."] =
+                "A base de conhecimento foi criada por uma versão mais recente do KnowledgeTracker. Atualize a aplicação e tente novamente.",
+            ["A safety copy of the knowledge base could not be created, so no changes were made. Check that there is enough free disk space and try again."] =
+                "Não foi possível criar uma cópia de segurança da base de conhecimento, pelo que não foram feitas alterações. Verifique se há espaço livre suficiente em disco e tente novamente.",
+            ["The knowledge base could not be upgraded. Please try again."] =
+                "Não foi possível atualizar a base de conhecimento. Tente novamente.",
+            ["The knowledge base could not be upgraded. A safety copy was saved here:\r\n\r\n{0}"] =
+                "Não foi possível atualizar a base de conhecimento. Foi guardada uma cópia de segurança em:\r\n\r\n{0}",
             ["Entries"] = "Entradas",
             ["New Entry"] = "Nova entrada",
             ["Edit Entry"] = "Editar entrada",
+            ["Select an entry to preview it."] = "Selecione uma entrada para a pré-visualizar.",
+            ["Description"] = "Descrição",
+            ["Description"] = "Descrição",
+            ["Step {0}"] = "Passo {0}",
+            ["Open attachments ({0})"] = "Abrir anexos ({0})",
             ["Save"] = "Guardar",
             ["Cancel"] = "Cancelar",
             ["Back"] = "Voltar",
@@ -48,9 +61,14 @@ namespace KnowledgeTrackerDesktop.UI
             ["Technologies"] = "Tecnologias",
             ["Date resolved"] = "Data de resolução",
             ["Not set"] = "Não definida",
+            ["Main information"] = "Informação principal",
+            ["Classification"] = "Classificação",
             ["Description (Markdown)"] = "Descrição (Markdown)",
-            ["No resolution steps yet. Add steps to document how the issue was resolved."] =
-                "Ainda não há passos de resolução. Adicione passos para documentar como o problema foi resolvido.",
+            ["Markdown is supported here."] = "Aqui é suportado Markdown.",
+            ["Attachments and references"] = "Anexos e referências",
+            ["Code & Attachments"] = "Código e anexos",
+            ["No resolution steps yet. Add steps to document how the issue was resolved."] = "Ainda não há passos de resolução. Adicione passos para documentar como o problema foi resolvido.",
+            ["Ainda não há passos de resolução. Adicione passos para documentar como o problema foi resolvido."] = "Ainda não há passos de resolução. Adicione passos para documentar como o problema foi resolvido.",
             ["Manage steps"] = "Gerir passos",
             ["1 step"] = "1 passo",
             ["{0} steps"] = "{0} passos",
@@ -61,6 +79,7 @@ namespace KnowledgeTrackerDesktop.UI
             ["Code preview"] = "Pré-visualização do código",
             ["Close"] = "Fechar",
             ["Open video"] = "Abrir vídeo",
+            ["Open code"] = "Abrir código",
             ["Attachments"] = "Anexos",
             ["+ Add file"] = "+ Adicionar ficheiro",
             ["Open gallery"] = "Abrir galeria",
@@ -93,11 +112,11 @@ namespace KnowledgeTrackerDesktop.UI
             ["All projects"] = "Todos os projetos",
             ["Newest first"] = "Mais recentes primeiro",
             ["Oldest first"] = "Mais antigos primeiro",
-            ["Title A–Z"] = "Título A–Z",
-            ["Title Z–A"] = "Título Z–A",
-            ["Project A–Z"] = "Projeto A–Z",
+            ["Title Aâ€“Z"] = "Tí­tulo Aâ€“Z",
+            ["Title Zâ€“A"] = "TÃ­tulo Zâ€“A",
+            ["Project Aâ€“Z"] = "Projeto Aâ€“Z",
             ["No knowledge entries yet.\r\n\r\nStart documenting the technical problems you solve."] =
-                "Ainda não há entradas de conhecimento.\r\n\r\nComece por documentar os problemas técnicos que resolve.",
+                "Ainda nã£o há entradas de conhecimento.\r\n\r\nComece por documentar os problemas técnicos que resolve.",
             ["No entries match your search.\r\n\r\nTry a different search term or clear the filters."] =
                 "Nenhuma entrada corresponde à pesquisa.\r\n\r\nTente outro termo ou limpe os filtros.",
             ["The favorite could not be updated. Please try again."] =
@@ -124,7 +143,7 @@ namespace KnowledgeTrackerDesktop.UI
             ["Your knowledge statistics will appear here once you create some entries."] =
                 "As estatísticas de conhecimento aparecerão aqui depois de criar algumas entradas.",
             ["No projects yet."] = "Ainda não há projetos.",
-            ["No resolved entries in the last 12 months.\r\nSet a “Date resolved” value on an entry to see activity here."] =
+            ["No resolved entries in the last 12 months.\r\nSet a \"Date resolved\" value on an entry to see activity here."] =
                 "Não há entradas resolvidas nos últimos 12 meses.\r\nDefina uma data de resolução numa entrada para ver atividade aqui.",
             ["No description."] = "Sem descrição.",
             ["Remove favorite"] = "Remover dos favoritos",
@@ -134,6 +153,8 @@ namespace KnowledgeTrackerDesktop.UI
             ["Delete"] = "Eliminar",
             ["1 entry"] = "1 entrada",
             ["{0} entries"] = "{0} entradas",
+            ["{0} of {1} entries"] = "{0} de {1} entradas",
+            ["Clear filters"] = "Limpar filtros",
             ["{0} step"] = "{0} passo",
             ["{0} file"] = "{0} ficheiro",
             ["{0} files"] = "{0} ficheiros",

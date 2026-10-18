@@ -128,7 +128,7 @@ namespace KnowledgeTrackerDesktop.Tests.UI
         }
 
         [Fact]
-        public void LeftClickSelectsAndOpensTheCardEntry()
+        public void LeftClickSelectsWithoutOpeningTheCardEntry()
         {
             using var card = new EntryCard(new KnowledgeEntry { Id = 7, Title = "Open me" });
             int? selectedId = null;
@@ -138,12 +138,33 @@ namespace KnowledgeTrackerDesktop.Tests.UI
 
             InvokeMouseDown(card, MouseButtons.Left);
 
+            // Selection is what feeds the library preview; opening needs a
+            // deliberate gesture so consulting an entry never leaves the list.
             Assert.Equal(7, selectedId);
-            Assert.Equal(7, openedId);
+            Assert.Null(openedId);
         }
 
         [Fact]
-        public void LeftClickOnChildControlSelectsAndOpens()
+        public void DoubleClickOpensTheEntryOnce()
+        {
+            using var card = new EntryCard(new KnowledgeEntry { Id = 21, Title = "Double click me" });
+            var opened = 0;
+            card.OpenRequested += _ => opened++;
+
+            InvokeMouseDown(card, MouseButtons.Left);
+
+            Assert.Equal(0, opened);
+
+            InvokeMouseDown(card, MouseButtons.Left, clicks: 2);
+            InvokeMouseDoubleClick(card, MouseButtons.Left);
+
+            // The second mouse-down and the double-click event describe the same
+            // gesture; the card's debounce collapses them into a single open.
+            Assert.Equal(1, opened);
+        }
+
+        [Fact]
+        public void LeftClickOnChildControlOnlySelects()
         {
             using var card = new EntryCard(new KnowledgeEntry { Id = 8, Title = "Select me" });
             int? selectedId = null;
@@ -155,7 +176,23 @@ namespace KnowledgeTrackerDesktop.Tests.UI
             InvokeMouseDown(child, MouseButtons.Left);
 
             Assert.Equal(8, selectedId);
-            Assert.Equal(8, openedId);
+            Assert.Null(openedId);
+        }
+
+        [Fact]
+        public void DoubleClickOnChildControlOpensTheEntry()
+        {
+            using var card = new EntryCard(new KnowledgeEntry { Id = 22, Title = "Open from child" });
+            int? selectedId = null;
+            int? openedId = null;
+            card.Selected += selected => selectedId = selected.Entry.Id;
+            card.OpenRequested += opened => openedId = opened.Entry.Id;
+            var child = FindControls(card).OfType<TableLayoutPanel>().First();
+
+            InvokeMouseDown(child, MouseButtons.Left, clicks: 2);
+
+            Assert.Equal(22, selectedId);
+            Assert.Equal(22, openedId);
         }
 
         [Fact]
@@ -172,6 +209,55 @@ namespace KnowledgeTrackerDesktop.Tests.UI
 
             Assert.Equal(10, selectedId);
             Assert.False(opened);
+        }
+
+        [Fact]
+        public void GestureRulesSelectOnLeftClickAndOpenOnlyOnTheSecondClick()
+        {
+            using var card = new EntryCard(new KnowledgeEntry { Id = 30, Title = "Gesture" });
+            var selected = 0;
+            var opened = 0;
+            card.Selected += _ => selected++;
+            card.OpenRequested += _ => opened++;
+
+            card.HandleGesture(MouseButtons.Left, 1);
+
+            Assert.Equal(1, selected);
+            Assert.Equal(0, opened);
+
+            card.HandleGesture(MouseButtons.Left, 2);
+
+            Assert.Equal(2, selected);
+            Assert.Equal(1, opened);
+
+            // The double-click event describes the same gesture as the second
+            // mouse-down; the debounce keeps it a single open.
+            card.HandleDoubleClick(MouseButtons.Left);
+
+            Assert.Equal(2, selected);
+            Assert.Equal(1, opened);
+
+            card.HandleGesture(MouseButtons.Right, 1);
+
+            Assert.Equal(3, selected);
+            Assert.Equal(1, opened);
+        }
+
+        [Fact]
+        public void RightAndMiddleGesturesNeverOpenTheEntry()
+        {
+            using var card = new EntryCard(new KnowledgeEntry { Id = 31, Title = "Right only" });
+            var selected = 0;
+            var opened = 0;
+            card.Selected += _ => selected++;
+            card.OpenRequested += _ => opened++;
+
+            card.HandleGesture(MouseButtons.Right, 2);
+            card.HandleDoubleClick(MouseButtons.Right);
+            card.HandleGesture(MouseButtons.Middle, 1);
+
+            Assert.Equal(1, selected);
+            Assert.Equal(0, opened);
         }
 
         [Fact]
@@ -206,12 +292,20 @@ namespace KnowledgeTrackerDesktop.Tests.UI
             }
         }
 
-        private static void InvokeMouseDown(Control control, MouseButtons button)
+        private static void InvokeMouseDown(Control control, MouseButtons button, int clicks = 1)
         {
             var method = typeof(Control).GetMethod(
                 "OnMouseDown",
                 BindingFlags.Instance | BindingFlags.NonPublic)!;
-            method.Invoke(control, new object[] { new MouseEventArgs(button, 1, 2, 2, 0) });
+            method.Invoke(control, new object[] { new MouseEventArgs(button, clicks, 2, 2, 0) });
+        }
+
+        private static void InvokeMouseDoubleClick(Control control, MouseButtons button)
+        {
+            var method = typeof(Control).GetMethod(
+                "OnMouseDoubleClick",
+                BindingFlags.Instance | BindingFlags.NonPublic)!;
+            method.Invoke(control, new object[] { new MouseEventArgs(button, 2, 2, 2, 0) });
         }
 
         private static void InvokeOnClick(Control control)

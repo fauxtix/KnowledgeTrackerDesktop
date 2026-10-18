@@ -8,8 +8,10 @@ namespace KnowledgeTrackerDesktop.UI.Views
     /// <summary>
     /// One KnowledgeEntry rendered as a card (UI_DESIGN_SPEC section 4.3).
     /// The card raises presentation events only; it never touches persistence.
-    /// A single left click opens the entry for editing; a right click selects
-    /// it and shows the context menu.
+    /// A single left click selects the entry so the library can show it in the
+    /// preview pane; a double click, the "Open/Edit" context menu item or the
+    /// preview's edit action opens the entry for editing. A right click also
+    /// selects it and shows the context menu.
     /// </summary>
     public class EntryCard : Panel
     {
@@ -20,6 +22,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
         private readonly Label _favorite;
         private readonly Label _delete;
+        private readonly Font _deleteFont = new("Segoe MDL2 Assets", 12f);
         private readonly ContextMenuStrip _contextMenu;
         private bool _isSelected;
         private DateTime _lastOpenAt = DateTime.MinValue;
@@ -62,7 +65,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 Size = new Size(28, 28),
                 BackColor = Color.Transparent,
                 TextAlign = ContentAlignment.MiddleCenter,
-                Font = new Font("Segoe MDL2 Assets", 12f),
+                Font = _deleteFont,
                 Text = "\uE74D",
                 ForeColor = AppTheme.SecondaryText,
                 Cursor = Cursors.Hand,
@@ -81,6 +84,21 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public KnowledgeEntry Entry { get; }
+
+        /// <summary>
+        /// Releases the resources the card owns itself (the context menu and the
+        /// MDL2 icon font). Shared theme fonts are never disposed here.
+        /// </summary>
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _contextMenu.Dispose();
+                _deleteFont.Dispose();
+            }
+
+            base.Dispose(disposing);
+        }
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public bool IsSelected => _isSelected;
@@ -128,14 +146,51 @@ namespace KnowledgeTrackerDesktop.UI.Views
         protected override void OnMouseDown(MouseEventArgs e)
         {
             base.OnMouseDown(e);
-            if (e.Button == MouseButtons.Left)
+            HandleGesture(e.Button, e.Clicks);
+        }
+
+        protected override void OnMouseDoubleClick(MouseEventArgs e)
+        {
+            base.OnMouseDoubleClick(e);
+            HandleDoubleClick(e.Button);
+        }
+
+        /// <summary>
+        /// Applies a mouse gesture coming from the card surface or from any of the
+        /// child controls that cover it. It is kept as an explicit method so the
+        /// gesture rules (select on left click, open on the second click of a
+        /// double click, select on right click) can be asserted directly instead
+        /// of only through simulated Windows mouse messages.
+        /// </summary>
+        internal void HandleGesture(MouseButtons button, int clicks)
+        {
+            if (button == MouseButtons.Left)
             {
                 RaiseSelected();
-                RaiseOpenRequested();
+
+                // A second click of a double click arrives as a mouse-down with
+                // Clicks == 2 (WM_LBUTTONDBLCLK); it is the "open" gesture.
+                if (clicks >= 2)
+                {
+                    RaiseOpenRequested();
+                }
             }
-            else if (e.Button == MouseButtons.Right)
+            else if (button == MouseButtons.Right)
             {
                 RaiseSelected();
+            }
+        }
+
+        /// <summary>
+        /// Applies the double-click part of a gesture from any surface. The open
+        /// is debounced, so the second mouse-down of the same double click and
+        /// this event collapse into a single open.
+        /// </summary>
+        internal void HandleDoubleClick(MouseButtons button)
+        {
+            if (button == MouseButtons.Left)
+            {
+                RaiseOpenRequested();
             }
         }
 
@@ -175,7 +230,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
         /// <summary>
         /// Forwards mouse interaction from the child controls that cover the
-        /// card surface so selection, single-click open and the context menu
+        /// card surface so selection, double-click open and the context menu
         /// work wherever the user clicks. The favorite affordance is excluded
         /// so it keeps toggling without selecting or opening the entry.
         /// </summary>
@@ -187,6 +242,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             }
 
             control.MouseDown += OnChildMouseDown;
+            control.MouseDoubleClick += OnChildMouseDoubleClick;
             control.ContextMenuStrip = _contextMenu;
 
             foreach (Control child in control.Controls)
@@ -195,18 +251,11 @@ namespace KnowledgeTrackerDesktop.UI.Views
             }
         }
 
-        private void OnChildMouseDown(object? sender, MouseEventArgs e)
-        {
-            if (e.Button == MouseButtons.Left)
-            {
-                RaiseSelected();
-                RaiseOpenRequested();
-            }
-            else if (e.Button == MouseButtons.Right)
-            {
-                RaiseSelected();
-            }
-        }
+        private void OnChildMouseDown(object? sender, MouseEventArgs e) =>
+            HandleGesture(e.Button, e.Clicks);
+
+        private void OnChildMouseDoubleClick(object? sender, MouseEventArgs e) =>
+            HandleDoubleClick(e.Button);
 
         private Control BuildLayout()
         {

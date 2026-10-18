@@ -7,6 +7,7 @@ namespace KnowledgeTrackerDesktop.Data
     /// Creates/updates the schema additively. A Step table without its expected
     /// primary key is rebuilt transactionally after backing up the existing file.
     /// A timestamped backup is also taken before raising the schema version.
+    /// A database written by a newer application version is never modified.
     /// </summary>
     public sealed class SchemaMigrator
     {
@@ -42,14 +43,26 @@ namespace KnowledgeTrackerDesktop.Data
             if (databaseExists)
             {
                 version = await ReadUserVersionAsync(path);
+
+                // A database written by a newer application version must be left
+                // untouched: no backup, no repair, no orphan cleanup and no
+                // user_version rewrite (which would silently downgrade it).
+                if (version > CurrentVersion)
+                {
+                    throw new SchemaVersionTooNewException(version, CurrentVersion);
+                }
+
                 malformedStepTable = await HasMalformedStepTableAsync(path);
                 hasOrphanedChildren = await HasOrphanedChildrenAsync(path);
             }
 
+            string? backupPath = null;
             if (databaseExists &&
                 (version < CurrentVersion || malformedStepTable || hasOrphanedChildren))
             {
-                CreateBackup(path);
+                // Required before any operation that may alter or repair data.
+                // A failure here aborts the migration via DatabaseBackupException.
+                backupPath = CreateBackup(path);
             }
 
             var connection = new SQLiteAsyncConnection(path);
@@ -77,6 +90,12 @@ namespace KnowledgeTrackerDesktop.Data
                         "WHERE \"KnowledgeEntry\".\"Id\" = \"AttachmentInfo\".\"KnowledgeEntryId\")");
                     conn.Execute($"PRAGMA user_version = {CurrentVersion}");
                 });
+            }
+            catch (Exception ex)
+            {
+                // Stop instead of starting with a partially repaired database;
+                // when a safety copy exists, point the caller at it.
+                throw new SchemaMigrationException(backupPath, ex);
             }
             finally
             {
@@ -212,14 +231,39 @@ namespace KnowledgeTrackerDesktop.Data
             connection.Execute($"DROP TABLE \"{temporaryTable}\"");
         }
 
-        private static void CreateBackup(string path)
+        /// <summary>
+        /// Writes a timestamped safety copy next to the database and returns its
+        /// path. Uses SQLite's backup API (as <see cref="DatabasePath"/> does for
+        /// the legacy copy) so the snapshot stays consistent even if the file is
+        /// open or a rollback journal/WAL exists. An existing backup is never
+        /// overwritten: any failure surfaces as <see cref="DatabaseBackupException"/>.
+        /// </summary>
+        private static string CreateBackup(string path)
         {
             var directory = Path.GetDirectoryName(path) ?? string.Empty;
             var name = Path.GetFileNameWithoutExtension(path);
             var extension = Path.GetExtension(path);
             var timestamp = DateTime.Now.ToString("yyyyMMddHHmmssfff");
             var backupPath = Path.Combine(directory, $"{name}.backup.{timestamp}{extension}");
-            File.Copy(path, backupPath);
+
+            if (File.Exists(backupPath))
+            {
+                throw new DatabaseBackupException(
+                    backupPath,
+                    new IOException($"A backup already exists at '{backupPath}'."));
+            }
+
+            try
+            {
+                using var source = new SQLiteConnection(path);
+                source.Backup(backupPath, "main");
+            }
+            catch (Exception ex)
+            {
+                throw new DatabaseBackupException(backupPath, ex);
+            }
+
+            return backupPath;
         }
 
         private sealed class TableColumn

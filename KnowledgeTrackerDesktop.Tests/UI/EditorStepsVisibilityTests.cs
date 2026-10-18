@@ -12,7 +12,7 @@ namespace KnowledgeTrackerDesktop.Tests.UI;
 public sealed class EditorStepsVisibilityTests
 {
     [Fact]
-    public void ExistingStepsAreVisibleOnTheResolutionsTab()
+    public void ExistingStepsAreVisibleInTheEditor()
     {
         var entry = new KnowledgeEntry { Id = 1, Title = "Entry with steps" };
         entry.Steps.Add(new Step { Description = "First resolution step", Order = 1, KnowledgeEntryId = entry.Id });
@@ -31,7 +31,7 @@ public sealed class EditorStepsVisibilityTests
         var tabs = Descendants(editor).OfType<TabControlAdv>().Single();
         Assert.Equal(0, tabs.SelectedIndex);
 
-        var stepInputs = Descendants(tabs.TabPages[3])
+        var stepInputs = Descendants(tabs.TabPages[1])
             .OfType<TextBoxExt>()
             .Where(input => input.Text.EndsWith("resolution step", StringComparison.Ordinal))
             .ToArray();
@@ -40,9 +40,9 @@ public sealed class EditorStepsVisibilityTests
     }
 
     [Fact]
-    public void AttachmentsAreOnTheSecondTab()
+    public void AttachmentsAppearInTheEditor()
     {
-        var entry = new KnowledgeEntry { Id = 5, Title = "Attachment tab entry" };
+        var entry = new KnowledgeEntry { Id = 5, Title = "Attachment entry" };
         entry.Attachments.Add(new AttachmentInfo
         {
             KnowledgeEntryId = entry.Id,
@@ -56,19 +56,19 @@ public sealed class EditorStepsVisibilityTests
             new FakeShellHost(),
             new EntryEditorRequest(entry));
 
-        var tabs = Descendants(editor).OfType<TabControlAdv>().Single();
-
-        Assert.Equal("Attachments", tabs.TabPages[1].Text);
         Assert.Contains(
-            Descendants(tabs.TabPages[1]).OfType<SfButton>(),
+            Descendants(editor).OfType<Label>(),
+            label => Equals(label.Tag, "Attachments and references"));
+        Assert.Contains(
+            Descendants(editor).OfType<SfButton>(),
             button => Equals(button.Tag, "+ Add file"));
         Assert.Contains(
-            Descendants(tabs.TabPages[1]).OfType<Label>(),
+            Descendants(editor).OfType<Label>(),
             label => label.Text == "file.txt");
     }
 
     [Fact]
-    public void YouTubeControlsAreOnTheThirdTab()
+    public void YouTubeControlsAppearInTheEditor()
     {
         var entry = new KnowledgeEntry
         {
@@ -82,14 +82,11 @@ public sealed class EditorStepsVisibilityTests
             new FakeShellHost(),
             new EntryEditorRequest(entry));
 
-        var tabs = Descendants(editor).OfType<TabControlAdv>().Single();
-
-        Assert.Equal("YouTube", tabs.TabPages[2].Text);
         Assert.Contains(
-            Descendants(tabs.TabPages[2]).OfType<TextBoxExt>(),
+            Descendants(editor).OfType<TextBoxExt>(),
             input => input.Text == entry.YouTubeUrl);
         Assert.Contains(
-            Descendants(tabs.TabPages[2]).OfType<SfButton>(),
+            Descendants(editor).OfType<SfButton>(),
             button => button.Text == "Open video");
     }
 
@@ -149,7 +146,7 @@ public sealed class EditorStepsVisibilityTests
     }
 
     [Fact]
-    public void CodeEditorHasCompactHeight()
+    public void CodeEditorExpandsToFillAvailableSpace()
     {
         using var editor = new ctlAddEdit(
             new FakeEntryService(),
@@ -159,14 +156,15 @@ public sealed class EditorStepsVisibilityTests
         {
             Size = new Size(1200, 800),
         };
+        var tabs = Descendants(editor).OfType<TabControlAdv>().Single();
+        tabs.SelectedIndex = 2; // Code tab
         editor.PerformLayout();
 
-        var tabs = Descendants(editor).OfType<TabControlAdv>().Single();
-        var codeEditor = Descendants(tabs.TabPages[0])
+        var codeEditor = Descendants(editor)
             .OfType<TextBoxExt>()
             .Single(input => input.Multiline && input.ScrollBars == ScrollBars.Both);
 
-        Assert.InRange(codeEditor.Height, 100, 140);
+        Assert.True(codeEditor.Height > 300, $"Code editor should expand to fill available space, but was {codeEditor.Height}px.");
     }
 
     [Fact]
@@ -252,7 +250,7 @@ public sealed class EditorStepsVisibilityTests
         }
 
         [Fact]
-        public void TagsAndFavoriteAreVisibleOnTheGeneralTab()
+        public void TagsAndFavoriteAreVisibleInTheEditor()
     {
         using var editor = new ctlAddEdit(
             new FakeEntryService(),
@@ -264,9 +262,6 @@ public sealed class EditorStepsVisibilityTests
         };
         editor.PerformLayout();
 
-        var tabs = Descendants(editor).OfType<TabControlAdv>().Single();
-        var generalTab = tabs.TabPages[0];
-
         var tagsEditor = (TextBoxExt)typeof(ctlAddEdit)
             .GetField("_tags", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
             .GetValue(editor)!;
@@ -274,9 +269,180 @@ public sealed class EditorStepsVisibilityTests
             .GetField("_favorite", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
             .GetValue(editor)!;
 
-        Assert.Contains(tagsEditor, Descendants(generalTab));
-        Assert.Contains(favorite, Descendants(generalTab));
+        Assert.Contains(tagsEditor, Descendants(editor));
+        Assert.Contains(favorite, Descendants(editor));
         Assert.Equal("ui;sqlite", tagsEditor.Text);
+    }
+
+    [Fact]
+    public void SectionsAreGroupedIntoTabsInAStableOrder()
+    {
+        using var editor = new ctlAddEdit(
+            new FakeEntryService(),
+            new FakeNavigation(),
+            new FakeShellHost(),
+            new EntryEditorRequest(new KnowledgeEntry { Id = 6, Title = "Sections test" }))
+        {
+            Size = new Size(1200, 800),
+        };
+        editor.PerformLayout();
+
+        var tabs = Descendants(editor).OfType<TabControlAdv>().Single();
+
+        string[] expectedTabs =
+        {
+            "General",
+            "Resolutions",
+            "Code",
+            "Attachments",
+        };
+
+        Assert.Equal(
+            expectedTabs,
+            tabs.TabPages.Cast<TabPageAdv>().Select(page => (string)page.Tag!).ToArray());
+
+        // Every field lives on exactly one tab, so nothing is duplicated or
+        // dropped when the single page was split into groups.
+        Control Field(string name) => (Control)typeof(ctlAddEdit)
+            .GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .GetValue(editor)!;
+
+        var expectedOwner = new Dictionary<string, int>
+        {
+            ["_title"] = 0,
+            ["_project"] = 0,
+            ["_technologies"] = 0,
+            ["_date"] = 0,
+            ["_tags"] = 0,
+            ["_favorite"] = 0,
+            ["_description"] = 0,
+            ["_comments"] = 0,
+            ["_code"] = 2,
+            ["_youtube"] = 3,
+        };
+
+        foreach (var pair in expectedOwner)
+        {
+            var control = Field(pair.Key);
+            var owner = control.Parent;
+            while (owner is not null && owner is not TabPageAdv)
+            {
+                owner = owner.Parent;
+            }
+
+            Assert.True(owner is TabPageAdv, $"{pair.Key} must sit inside a tab page.");
+            Assert.Same(tabs.TabPages[pair.Value], owner);
+
+            var hosts = tabs.TabPages.Cast<TabPageAdv>()
+                .Count(page => IsInsideTab(control, page));
+            Assert.Equal(1, hosts);
+        }
+
+        // Steps are rebuilt into the Resolutions tab.
+        Assert.True(
+            IsInsideTab(Field("_stepRows"), tabs.TabPages[1]),
+            "The steps rows must sit inside the Resolutions tab.");
+    }
+
+    private static bool IsInsideTab(Control control, Control expectedPage)
+    {
+        for (var current = control; current is not null; current = current.Parent)
+        {
+            if (ReferenceEquals(current, expectedPage))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    [Fact]
+    public void TabLabelsAreBoundToLocalisableKeys()
+    {
+        using var editor = new ctlAddEdit(
+            new FakeEntryService(),
+            new FakeNavigation(),
+            new FakeShellHost(),
+            new EntryEditorRequest(new KnowledgeEntry { Id = 7, Title = "Tab language test" }));
+        editor.PerformLayout();
+
+        var tabs = Descendants(editor).OfType<TabControlAdv>().Single();
+
+        string[] englishKeys =
+        {
+            "General",
+            "Resolutions",
+            "Code",
+            "Attachments",
+        };
+
+        var pages = tabs.TabPages.Cast<TabPageAdv>().ToArray();
+        Assert.Equal(englishKeys, pages.Select(page => (string)page.Tag!).ToArray());
+
+        foreach (var key in englishKeys)
+        {
+            var page = pages.Single(candidate => Equals(candidate.Tag, key));
+
+            // The rendered text comes from the translator for the active
+            // language, and a Portuguese translation exists for the key.
+            Assert.Equal(AppLocalization.Translate(key), page.Text);
+            Assert.NotEqual(key, AppLocalization.Translate(key, AppLanguage.Portuguese));
+        }
+    }
+
+    [Fact]
+    public void EveryTabHostsAIndependentlyScrollableBody()
+    {
+        using var editor = new ctlAddEdit(
+            new FakeEntryService(),
+            new FakeNavigation(),
+            new FakeShellHost(),
+            new EntryEditorRequest(new KnowledgeEntry { Id = 8, Title = "Scroll test" }))
+        {
+            Size = new Size(1024, 700),
+        };
+        editor.PerformLayout();
+
+        var tabs = Descendants(editor).OfType<TabControlAdv>().Single();
+
+        foreach (TabPageAdv page in tabs.TabPages)
+        {
+            var body = page.Controls.OfType<Panel>().Single();
+            Assert.True(body.AutoScroll, $"The '{page.Text}' tab must scroll on its own.");
+        }
+
+        // The editor itself must not be one long scrolling page any more: the
+        // tab strip stays put while only the active body scrolls.
+        Assert.False(
+            tabs.Parent is Panel { AutoScroll: true },
+            "The editor must not stack every group into a single global scrollbar.");
+    }
+
+    [Fact]
+    public void SaveValidationErrorReturnsToTheGeneralTab()
+    {
+        using var editor = new ctlAddEdit(
+            new FakeEntryService(),
+            new FakeNavigation(),
+            new FakeShellHost(),
+            new EntryEditorRequest(new KnowledgeEntry { Id = 9, Title = "Validation test" }))
+        {
+            Size = new Size(1200, 800),
+        };
+        editor.PerformLayout();
+        editor.OnAppearingAsync();
+
+        var tabs = Descendants(editor).OfType<TabControlAdv>().Single();
+        tabs.SelectedIndex = 3;
+
+        var title = (TextBoxExt)FieldOf(editor, "_title");
+        title.Text = "   ";
+
+        var save = (SfButton)FieldOf(editor, "_saveButton");
+        save.PerformClick();
+
+        Assert.Equal(0, tabs.SelectedIndex);
     }
 
     [Fact]
@@ -301,6 +467,11 @@ public sealed class EditorStepsVisibilityTests
 
         Assert.InRange(date.Height, technologies.Height - 1, technologies.Height + 1);
     }
+
+    private static Control FieldOf(object instance, string name) => (Control)instance
+        .GetType()
+        .GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+        .GetValue(instance)!;
 
     private static IEnumerable<Control> Descendants(Control root)
     {

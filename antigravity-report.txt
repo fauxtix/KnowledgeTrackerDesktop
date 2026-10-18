@@ -1,0 +1,100 @@
+# Relatório de Análise Inicial
+
+Em cumprimento das instruções, **nenhum ficheiro foi criado, alterado, eliminado ou restaurado**, e nenhum comando de modificação foi executado.
+
+---
+
+## 1. Confirmação da Pasta de Trabalho Atual
+
+* **Diretório atual**: `C:\NewProjects\KnowledgeTrackerDesktop`
+* **Ambiente de execução**: Windows (PowerShell) com .NET SDK 10.0.
+
+---
+
+## 2. Inspeção do Estado do Git e Alterações Existentes
+
+O repositório possui trabalho recente em curso (abrangendo temas de pesquisa da biblioteca, segurança nas migrações SQLite e a interface do editor e pré-visualização):
+
+### Ficheiros modificados (*Tracked - Modified*):
+1. **ctlAddEdit.cs** (+233 / -155 linhas):
+   - Reintrodução e reestruturação de separadores com `TabControlAdv` (atualmente com 4 separadores: *General*, *Description*, *Resolutions*, *Code & Attachments*).
+   - Scroll frame independente por separador (`SfScrollFrame`).
+   - `_errorLabel` posicionado acima dos separadores com alternância automática para o separador *General* em erros de validação do título.
+   - Extração da abertura de links e anexos para a classe auxiliar `EntryOpenActions`.
+2. **ctlMain.cs**:
+   - Debounce na pesquisa da biblioteca, estado vazio quando não há resultados com ação de limpar filtros, integração com painel de pré-visualização.
+3. **EntryCard.cs** & **EntryListFilter.cs**:
+   - Gestão de ciclo de vida/recursos dos cartões e lógica de filtragem combinada.
+4. **SchemaMigrator.cs** & **Program.cs**:
+   - Tratamento seguro de migrações SQLite, backup com API nativa e barreira para bases de dados com versão mais recente.
+5. **AppLocalization.cs**:
+   - Novas strings PT/EN para migrações, separadores, secções e pesquisa.
+6. **Ficheiros de testes modificados**:
+   - `SchemaMigratorTests.cs`, `EditorStepsVisibilityTests.cs`, `EntryCardTests.cs`, `EntryListFilterTests.cs`.
+
+### Ficheiros não monitorizados (*Untracked* `??`):
+- **Código de aplicação**:
+  - `DatabaseBackupException.cs`, `SchemaMigrationException.cs`, `SchemaVersionTooNewException.cs` (em `Data/`)
+  - `EntryOpenActions.cs`, `ctlEntryPreview.cs` (em `UI/Views/`)
+  - `ctlStatistics.resx` (recurso local preexistente)
+- **Testes novos**:
+  - `EditorScrollAndSizingTests.cs`, `EditorTabsTests.cs`, `EntryOpenActionsTests.cs`, `EntryPreviewTests.cs`, `LibraryPreviewSelectionTests.cs`, `LibrarySearchTests.cs`.
+- **Documentação de trabalho**:
+  - `RUNTIME_ERROR_HANDOFF.md` (registo temporário de handoff das Fases 1 a 5).
+
+> [!NOTE]
+> Uma instância do processo `KnowledgeTrackerDesktop.exe` (PID 12560) está atualmente em execução no Windows, mantendo o executável bloqueado para novas compilações até ser fechada.
+
+---
+
+## 3. Resumo da Estrutura do Projeto
+
+O projeto segue uma arquitetura em camadas simples e modular (sem complexidade desnecessária ou MVVM forçado), estruturado da seguinte forma:
+
+```text
+KnowledgeTrackerDesktop.slnx
+├── KnowledgeTrackerDesktop (Aplicação WinForms .NET 10)
+│   ├── Bootstrap      → Inicialização, IoC e injeção de dependências (AppComposition.cs)
+│   ├── Core           → Modelos de domínio (KnowledgeEntry, Step, AttachmentInfo)
+│   ├── Data           → Persistência SQLite (KnowledgeRepositorySQLite, SchemaMigrator)
+│   ├── Services       → Serviços aplicacionais (KnowledgeEntryService, StatisticsService)
+│   └── UI
+│       ├── Navigation → Contratos e gestão de navegação (INavigationService, IShellHost)
+│       ├── Shell      → Moldura da janela e cabeçalho global (MainForm)
+│       ├── Theme      → Paleta Carbon e estilos de botões (AppTheme, CarbonTheme, ButtonStyler)
+│       └── Views      → Ecrãs e controlos de utilizador (ctlMain, ctlAddEdit, ctlEntryPreview, ctlManageSteps, ctlStatistics)
+├── KnowledgeTrackerDesktop.Tests (Suite de testes xUnit)
+└── KnowledgeTrackerDesktop.Package (Projeto de empacotamento Windows MSIX)
+```
+
+---
+
+## 4. Como Posso Ajudar a Corrigir a Interface do Editor de Registos (`ctlAddEdit`)
+
+Com base nas especificações do projeto (UI_DESIGN_SPEC.md §5 e UI_GUIDELINES.md §10), posso ajudar especificamente nos seguintes aspetos:
+
+1. **Ajuste e Organização dos Separadores (`TabControlAdv`)**:
+   - Avaliar a divisão ideal das áreas técnicas: manter 4 separadores (*General*, *Description*, *Resolutions*, *Code & Attachments*) ou separar *Code* e *Attachments/YouTube* em 5 separadores, conforme discutido nas notas de handoff.
+   - Ajustar o dimensionamento dos cabeçalhos dos separadores (`TabSizeMode.Normal` vs custom draw) para garantir que títulos longos em PT e EN nunca fiquem cortados na resolução mínima (1024×700).
+   - Garantir que cada separador possui o seu próprio scroll independente e que controlos descendentes não sofrem distorção de altura.
+
+2. **Hierarquia e Disposição Visual dos Campos**:
+   - **Cabeçalho**: Manter as ações contextuais no topo (`Save` com papel de destaque primário, `Cancel` e `Back`).
+   - **Título e Metadados**: Otimizar a disposição horizontal de Projeto, Tecnologias e Data, além de Tags e Favorito na barra de metadados compacta.
+   - **Validação e Tratamento de Erros**: Garantir que mensagens de erro (`_errorLabel`) fiquem sempre visíveis e reposicionem o foco/separador ativo para o campo com problema.
+
+3. **Secções de Conteúdo Técnico**:
+   - **Descrição (Markdown)**: Configurar a área de edição com tipo de letra monoespaçado/adequado, preservação de whitespace e scrollbars temáticas.
+   - **Passos de Resolução**: Apresentação compacta da listagem de passos com contador e integração direta com o ecrã focado ctlManageSteps.
+   - **Código**: Caixa de texto com suporte de cópia e acesso à janela de pré-visualização dedicada.
+   - **Anexos e Vídeo**: Lista de anexos com remoção, galeria de imagens e secção compacta de link YouTube (apenas expansiva se preenchida).
+
+4. **Preservação de Dados e Confirmação de Saída**:
+   - Validação da flag `_dirty` e apresentação de diálogo de confirmação ao cancelar se houver alterações não gravadas.
+
+5. **Testes e Garantia de Qualidade**:
+   - Criar ou atualizar os testes em `KnowledgeTrackerDesktop.Tests/UI` para garantir que a visibilidade dos controlos, ordem dos separadores e traduções permanecem 100% cobertas sem regressões.
+
+---
+
+Quando quiser avançar, indique qual o problema específico ou requisito que pretende abordar no editor.

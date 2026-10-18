@@ -46,14 +46,45 @@ namespace KnowledgeTrackerDesktop
             {
                 schemaMigrator.InitializeAsync().GetAwaiter().GetResult();
             }
+            catch (SchemaVersionTooNewException ex)
+            {
+                // The database belongs to a newer application version; it was left
+                // untouched, so the user only needs to update the application.
+                System.Diagnostics.Debug.WriteLine(ex);
+                ShowStartupError(AppLocalization.Translate(
+                    "The knowledge base was created by a newer version of KnowledgeTracker. " +
+                    "Update the application and try again."));
+                return;
+            }
+            catch (DatabaseBackupException ex)
+            {
+                // The safety copy required before upgrading could not be written,
+                // so nothing was changed.
+                System.Diagnostics.Debug.WriteLine(ex);
+                ShowStartupError(AppLocalization.Translate(
+                    "A safety copy of the knowledge base could not be created, so no changes were made. " +
+                    "Check that there is enough free disk space and try again."));
+                return;
+            }
+            catch (SchemaMigrationException ex)
+            {
+                // The upgrade or repair failed. The database is not left partially
+                // repaired and any existing safety copy is reported, never restored.
+                System.Diagnostics.Debug.WriteLine(ex);
+                ShowStartupError(ex.BackupPath is null
+                    ? AppLocalization.Translate("The knowledge base could not be upgraded. Please try again.")
+                    : string.Format(
+                        AppLocalization.Culture,
+                        AppLocalization.Translate(
+                            "The knowledge base could not be upgraded. A safety copy was saved here:\r\n\r\n{0}"),
+                        ex.BackupPath));
+                return;
+            }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine(ex);
-                MessageBox.Show(
-                    AppLocalization.Translate("The knowledge base could not be opened. Please try again."),
-                    "KnowledgeTracker",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                ShowStartupError(AppLocalization.Translate(
+                    "The knowledge base could not be opened. Please try again."));
                 return;
             }
 
@@ -66,6 +97,13 @@ namespace KnowledgeTrackerDesktop
 
             Application.Run(shell);
         }
+
+        private static void ShowStartupError(string message) =>
+            MessageBox.Show(
+                message,
+                "KnowledgeTracker",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
 
         private static string? ReadSyncfusionLicenseKey()
         {

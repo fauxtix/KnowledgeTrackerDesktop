@@ -43,12 +43,23 @@ namespace KnowledgeTrackerDesktop.UI.Views
         private readonly TextBoxExt _comments = new();
         private readonly Label _errorLabel = new();
         private readonly TableLayoutPanel _generalForm = new();
+        private readonly TableLayoutPanel _stepsForm = new();
+        private readonly TableLayoutPanel _codeForm = new();
         private readonly TableLayoutPanel _attachmentsForm = new();
-        private readonly TableLayoutPanel _youtubeForm = new();
-        private readonly TableLayoutPanel _resolutionForm = new();
         private readonly List<SfScrollFrame> _scrollFrames = new();
-        private TabControlAdv? _editorTabs;
 
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+        internal Func<string[]?>? FilePicker { get; set; }
+
+        /// <summary>
+        /// Horizontal padding kept between a tab caption and the header
+        /// borders. The strip sizes each header from its own caption
+        /// (<c>SizeMode.Normal</c>), so this inset must stay small enough for
+        /// the longest translated label to be drawn in full.
+        /// </summary>
+        private const int TabTextInset = 8;
+
+        private TabControlAdv? _editorTabs;
         private SfButton? _saveButton;
         private bool _dirty;
 
@@ -135,9 +146,8 @@ namespace KnowledgeTrackerDesktop.UI.Views
         private Control BuildRoot()
         {
             ConfigureForm(_generalForm);
+            ConfigureForm(_stepsForm);
             ConfigureForm(_attachmentsForm);
-            ConfigureForm(_youtubeForm);
-            ConfigureForm(_resolutionForm);
 
             _errorLabel.AutoSize = true;
             _errorLabel.ForeColor = AppTheme.Error;
@@ -150,23 +160,33 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _title.TextChanged += (_, _) => MarkDirty();
 
             BuildMetadata();
-            _generalForm.Controls.Add(_errorLabel);
-            _generalForm.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            AddFormRow(_generalForm, BuildTitleRow());
-            AddFormRow(_generalForm, BuildMetadataRow());
 
-            BuildDescription();
-            BuildCodeSection();
-            BuildYouTubeSection();
-            BuildAttachmentsSection();
-            BuildComments();
-            BuildStepsSection();
+            // Tab 1: General — every piece of classification metadata (title,
+            // project, technologies, date, tags, favorite) plus description
+            // and comments lives on the General tab.
+            AddSectionRow(_generalForm, CreateSection("Main information", BuildMainInformationRow()));
+            AddSectionRow(_generalForm, CreateSection("Classification", BuildClassificationRow()));
+            AddSectionRow(_generalForm, CreateSection("Description (Markdown)", BuildDescriptionSection()));
+            AddSectionRow(_generalForm, CreateSection("Comments", BuildCommentsSection()));
+
+            // Tab 2: Resolutions — structured steps.
+            AddSectionRow(_stepsForm, CreateSection("Resolution steps", BuildStepsSection()));
+
+            // Tab 3: Code — dedicated code editor that expands to fill the
+            // available space, with copy and preview actions.
+            BuildCodeTab();
+
+            // Tab 4: Attachments — attachments list, gallery, and YouTube video.
+            AddSectionRow(_attachmentsForm, CreateSection("Attachments and references", BuildAttachmentsSection()));
 
             var tabs = _editorTabs = new TabControlAdv
             {
                 Dock = DockStyle.Fill,
                 TabStyle = typeof(TabRenderer2D),
+                // All four tabs share a fixed, uniform width (140x36) ensuring
+                // balanced presentation and full label visibility without clipping.
                 SizeMode = Syncfusion.Windows.Forms.Tools.TabSizeMode.Fixed,
+                ItemSize = new Size(140, 36),
                 BackColor = AppTheme.Background,
                 TabPanelBackColor = AppTheme.Background,
                 BorderVisible = true,
@@ -174,44 +194,50 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 SeparatorColor = AppTheme.CardBorder,
                 Font = AppTheme.Fonts.Caption,
                 ActiveTabFont = AppTheme.Fonts.SectionTitle,
-                ItemSize = new Size(140, 36),
                 HotTrack = true,
             };
             EnableDoubleBuffering(tabs);
             tabs.DrawItem += (_, e) => DrawEditorTab(tabs, e);
-            var generalTab = new TabPageAdv
-            {
-                BackColor = AppTheme.Background,
-            };
-            var attachmentsTab = new TabPageAdv
-            {
-                BackColor = AppTheme.Background,
-            };
-            var resolutionsTab = new TabPageAdv
-            {
-                BackColor = AppTheme.Background,
-            };
-            var youtubeTab = new TabPageAdv
-            {
-                BackColor = AppTheme.Background,
-            };
-            AppLocalization.Bind(generalTab, "General");
-            AppLocalization.Bind(attachmentsTab, "Attachments");
-            AppLocalization.Bind(resolutionsTab, "Resolutions");
-            AppLocalization.Bind(youtubeTab, "YouTube");
-            generalTab.Controls.Add(CreateScrollableForm(_generalForm));
-            attachmentsTab.Controls.Add(CreateScrollableForm(_attachmentsForm));
-            youtubeTab.Controls.Add(CreateScrollableForm(_youtubeForm));
-            resolutionsTab.Controls.Add(CreateScrollableForm(_resolutionForm));
-            tabs.Controls.Add(generalTab);
-            tabs.Controls.Add(attachmentsTab);
-            tabs.Controls.Add(youtubeTab);
-            tabs.Controls.Add(resolutionsTab);
+
+            tabs.Controls.Add(CreateTab("General", _generalForm));
+            tabs.Controls.Add(CreateTab("Resolutions", _stepsForm));
+            tabs.Controls.Add(CreateTab("Code", _codeForm));
+            tabs.Controls.Add(CreateTab("Attachments", _attachmentsForm));
             tabs.SelectedIndex = 0;
 
-            return tabs;
+            // The validation message sits above the tab strip so it stays
+            // visible no matter which tab is active.
+            var root = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2,
+                Margin = Padding.Empty,
+            };
+            root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            root.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+            root.Controls.Add(_errorLabel, 0, 0);
+            root.Controls.Add(tabs, 0, 1);
+            return root;
         }
 
+        private TabPageAdv CreateTab(string titleKey, Control form)
+        {
+            var page = new TabPageAdv
+            {
+                BackColor = AppTheme.Background,
+            };
+            AppLocalization.Bind(page, titleKey);
+            page.Controls.Add(CreateScrollableForm(form));
+            return page;
+        }
+
+        /// <summary>
+        /// Applies the Carbon look to the editor tab strip after the skin has
+        /// been set (mirrors the behaviour the editor had before the single
+        /// page redesign). Safe to call repeatedly.
+        /// </summary>
         internal void ApplyEditorTabTheme()
         {
             if (_editorTabs is null)
@@ -255,17 +281,30 @@ namespace KnowledgeTrackerDesktop.UI.Views
             }
 
             var textColor = selected ? AppTheme.PrimaryText : AppTheme.SecondaryText;
-            var textBounds = Rectangle.Inflate(bounds, -8, -2);
-            TextRenderer.DrawText(
-                e.Graphics,
-                tabs.TabPages[e.Index].Text,
-                selected ? AppTheme.Fonts.SectionTitle : AppTheme.Fonts.Caption,
-                textBounds,
-                textColor,
-                TextFormatFlags.HorizontalCenter |
+            var text = tabs.TabPages[e.Index].Text;
+            var textBounds = Rectangle.Inflate(bounds, -TabTextInset, -2);
+            var flags = TextFormatFlags.HorizontalCenter |
                 TextFormatFlags.VerticalCenter |
-                TextFormatFlags.EndEllipsis |
-                TextFormatFlags.SingleLine);
+                TextFormatFlags.SingleLine |
+                TextFormatFlags.NoPrefix;
+
+            // The header is sized from the caption font, so the emphasis font
+            // is only used while the complete label still fits inside the
+            // header: a lighter caption always beats a shortened one.
+            var font = selected ? AppTheme.Fonts.SectionTitle : AppTheme.Fonts.Caption;
+            if (!FitsInHeader(e.Graphics, text, font, textBounds, flags))
+            {
+                font = AppTheme.Fonts.Caption;
+            }
+
+            if (!FitsInHeader(e.Graphics, text, font, textBounds, flags))
+            {
+                // Defensive only: reachable if a future layout change shrinks
+                // the headers below the width of their own caption.
+                flags |= TextFormatFlags.EndEllipsis;
+            }
+
+            TextRenderer.DrawText(e.Graphics, text, font, textBounds, textColor, flags);
 
             if (selected)
             {
@@ -273,6 +312,63 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 using var accentBrush = new SolidBrush(AppTheme.Accent);
                 e.Graphics.FillRectangle(accentBrush, indicator);
             }
+        }
+
+        /// <summary>
+        /// Measures <paramref name="text"/> exactly as <see cref="DrawEditorTab"/>
+        /// renders it, so the caption can be checked against the header
+        /// bounds before drawing.
+        /// </summary>
+        private static bool FitsInHeader(Graphics graphics, string text, Font font, Rectangle bounds, TextFormatFlags flags)
+        {
+            var required = TextRenderer.MeasureText(graphics, text, font, Size.Empty, flags);
+            return required.Width <= bounds.Width && required.Height <= bounds.Height;
+        }
+
+        /// <summary>
+        /// Builds one visual section: a surface-coloured card with a header and
+        /// the supplied rows. Cards are reused inside each editor tab so the
+        /// Carbon look stays consistent across the tabbed layout.
+        /// </summary>
+        private Control CreateSection(string titleKey, params Control[] rows)
+        {
+            var card = new TableLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = 1,
+                BackColor = AppTheme.Surface,
+                Padding = new Padding(16, 12, 16, 12),
+                Margin = Padding.Empty,
+            };
+            card.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+            EnableDoubleBuffering(card);
+
+            var header = new Label
+            {
+                AutoSize = true,
+                ForeColor = AppTheme.PrimaryText,
+                Font = AppTheme.Fonts.SectionTitle,
+                Margin = new Padding(0, 0, 0, 10),
+            };
+            AppLocalization.Bind(header, titleKey);
+            card.Controls.Add(header, 0, 0);
+            card.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+            foreach (var row in rows)
+            {
+                AddFormRow(card, row);
+                row.Margin = new Padding(0, 0, 0, 8);
+            }
+
+            card.Paint += (_, e) =>
+            {
+                using var pen = new Pen(AppTheme.CardBorder);
+                e.Graphics.DrawRectangle(pen, 0, 0, card.ClientSize.Width - 1, card.ClientSize.Height - 1);
+            };
+
+            return card;
         }
 
         private static void ConfigureForm(TableLayoutPanel form)
@@ -285,7 +381,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             form.Margin = Padding.Empty;
         }
 
-        private Control CreateScrollableForm(TableLayoutPanel form)
+        private Control CreateScrollableForm(Control form)
         {
             var body = new Panel
             {
@@ -377,7 +473,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _favorite.CheckedChanged += (_, _) => MarkDirty();
         }
 
-        private Control BuildTitleRow()
+        private Control BuildMainInformationRow()
         {
             var row = new TableLayoutPanel
             {
@@ -387,6 +483,11 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 ColumnCount = 2,
                 RowCount = 1,
                 Margin = Padding.Empty,
+                // The editor is a single scrolling page, so the metadata inputs
+                // no longer inherit a font from the old tab pages. Set it here
+                // so their rendered height stays consistent (and matches the
+                // fixed-height date editor).
+                Font = AppTheme.Fonts.Caption,
             };
             row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70f));
             row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30f));
@@ -396,7 +497,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             return row;
         }
 
-        private Control BuildMetadataRow()
+        private Control BuildClassificationRow()
         {
             var meta = new TableLayoutPanel
             {
@@ -406,6 +507,9 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 ColumnCount = 4,
                 RowCount = 1,
                 Margin = Padding.Empty,
+                // See BuildMainInformationRow: keep the metadata inputs on the
+                // same font as before the tabs were removed.
+                Font = AppTheme.Fonts.Caption,
             };
             meta.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 32f));
             meta.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
@@ -464,20 +568,43 @@ namespace KnowledgeTrackerDesktop.UI.Views
             return container;
         }
 
-        private void BuildDescription()
+        private Control BuildDescriptionSection()
         {
             _description.Dock = DockStyle.Fill;
             _description.Multiline = true;
             _description.ScrollBars = ScrollBars.Vertical;
-            _description.Height = 85;
+            _description.Height = 80;
             _description.Font = new Font("Consolas", 11f);
             _description.TextChanged += (_, _) => MarkDirty();
             ApplyThemedScrollFrame(_description);
 
-            AddFormRow(_generalForm, Field("Description (Markdown)", _description));
+            var hint = new Label
+            {
+                AutoSize = true,
+                ForeColor = AppTheme.SecondaryText,
+                Font = AppTheme.Fonts.Caption,
+                Margin = new Padding(0, 4, 0, 0),
+            };
+            AppLocalization.Bind(hint, "Markdown is supported here.");
+
+            var stack = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = 1,
+                RowCount = 2,
+                Margin = Padding.Empty,
+            };
+            stack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+            stack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            stack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            stack.Controls.Add(_description, 0, 0);
+            stack.Controls.Add(hint, 0, 1);
+            return stack;
         }
 
-        private void BuildStepsSection()
+        private Control BuildStepsSection()
         {
             _stepsCount.AutoSize = true;
             _stepsCount.ForeColor = AppTheme.SecondaryText;
@@ -493,6 +620,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _stepRows.Dock = DockStyle.Top;
             _stepRows.AutoSize = true;
             _stepRows.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            _stepRows.RowCount = 0;
             _stepRows.ColumnCount = 1;
             _stepRows.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
             _stepRows.Margin = Padding.Empty;
@@ -504,6 +632,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 Size = new Size(120, 32),
                 Anchor = AnchorStyles.Left,
                 Margin = new Padding(0, 8, 0, 0),
+                Tag = "+ Add step",
             };
             AppLocalization.Bind(add, "+ Add step");
             add.Click += (_, _) => AddStep();
@@ -527,24 +656,23 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 ColumnCount = 1,
-                RowCount = 5,
+                RowCount = 4,
                 Margin = Padding.Empty,
             };
             for (var index = 0; index < section.RowCount; index++)
             {
                 section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             }
-            section.Controls.Add(CreateSectionLabel("Manage steps"), 0, 0);
-            section.Controls.Add(row, 0, 1);
-            section.Controls.Add(_stepsEmpty, 0, 2);
-            section.Controls.Add(_stepRows, 0, 3);
-            section.Controls.Add(add, 0, 4);
+            section.Controls.Add(row, 0, 0);
+            section.Controls.Add(_stepsEmpty, 0, 1);
+            section.Controls.Add(_stepRows, 0, 2);
+            section.Controls.Add(add, 0, 3);
 
-            AddFormRow(_resolutionForm, section);
             RebuildStepRows();
+            return section;
         }
 
-        private void AddStep()
+        internal void AddStep()
         {
             _workingSteps.Add(new Step
             {
@@ -558,6 +686,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
         private void RebuildStepRows()
         {
+            _stepRows.SuspendLayout();
             foreach (Control control in _stepRows.Controls.Cast<Control>().ToArray())
             {
                 _stepRows.Controls.Remove(control);
@@ -583,6 +712,9 @@ namespace KnowledgeTrackerDesktop.UI.Views
                         _workingSteps.Count);
             });
             _stepsEmpty.Visible = _workingSteps.Count == 0;
+            _stepRows.ResumeLayout(true);
+            _stepRows.PerformLayout();
+            _stepRows.Parent?.PerformLayout();
         }
 
         private Control BuildStepRow(int index)
@@ -690,14 +822,42 @@ namespace KnowledgeTrackerDesktop.UI.Views
             RebuildStepRows();
         }
 
-        private void BuildCodeSection()
+        private void BuildCodeTab()
         {
+            _codeForm.Dock = DockStyle.Fill;
+            _codeForm.ColumnCount = 2;
+            _codeForm.RowCount = 2;
+            _codeForm.ColumnStyles.Clear();
+            _codeForm.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+            _codeForm.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            _codeForm.RowStyles.Clear();
+            _codeForm.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            _codeForm.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+            _codeForm.BackColor = AppTheme.Surface;
+            _codeForm.Padding = new Padding(16, 12, 16, 12);
+            _codeForm.Margin = Padding.Empty;
+            EnableDoubleBuffering(_codeForm);
+            _codeForm.Paint += (_, e) =>
+            {
+                using var pen = new Pen(AppTheme.CardBorder);
+                e.Graphics.DrawRectangle(pen, 0, 0, _codeForm.ClientSize.Width - 1, _codeForm.ClientSize.Height - 1);
+            };
+
+            var header = new Label
+            {
+                AutoSize = true,
+                ForeColor = AppTheme.PrimaryText,
+                Font = AppTheme.Fonts.SectionTitle,
+                Margin = new Padding(0, 0, 0, 10),
+            };
+            AppLocalization.Bind(header, "Code");
+            _codeForm.Controls.Add(header, 0, 0);
+
             _code.Dock = DockStyle.Fill;
             _code.Multiline = true;
             _code.ScrollBars = ScrollBars.Both;
             _code.WordWrap = false;
             _code.AcceptsTab = true;
-            _code.Height = 120;
             _code.Font = new Font("Consolas", 11f);
             _code.TextChanged += (_, _) => MarkDirty();
             ApplyThemedScrollFrame(_code);
@@ -707,7 +867,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 AutoSize = false,
                 Size = new Size(100, 30),
                 Anchor = AnchorStyles.Top,
-                Margin = new Padding(8, 0, 0, 0),
+                Margin = new Padding(0, 0, 8, 10),
                 Enabled = !string.IsNullOrEmpty(_code.Text),
             };
             AppLocalization.Bind(copy, "Copy");
@@ -719,7 +879,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 AutoSize = false,
                 Size = new Size(130, 30),
                 Anchor = AnchorStyles.Top,
-                Margin = new Padding(8, 4, 0, 0),
+                Margin = new Padding(0, 0, 0, 10),
                 Enabled = !string.IsNullOrEmpty(_code.Text),
             };
             AppLocalization.Bind(preview, "Preview");
@@ -733,46 +893,20 @@ namespace KnowledgeTrackerDesktop.UI.Views
             {
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                FlowDirection = FlowDirection.TopDown,
+                FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = false,
-                Dock = DockStyle.Fill,
+                Anchor = AnchorStyles.Right,
                 Margin = Padding.Empty,
             };
             actions.Controls.Add(copy);
             actions.Controls.Add(preview);
 
-            var row = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                ColumnCount = 2,
-                RowCount = 1,
-                Margin = Padding.Empty,
-            };
-            row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
-            row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            row.Controls.Add(_code, 0, 0);
-            row.Controls.Add(actions, 1, 0);
-
-            var section = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                ColumnCount = 1,
-                RowCount = 2,
-                Margin = Padding.Empty,
-            };
-            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            section.Controls.Add(CreateSectionLabel("Code"), 0, 0);
-            section.Controls.Add(row, 0, 1);
-
-            AddFormRow(_generalForm, section);
+            _codeForm.Controls.Add(actions, 1, 0);
+            _codeForm.Controls.Add(_code, 0, 1);
+            _codeForm.SetColumnSpan(_code, 2);
         }
 
-        private void BuildYouTubeSection()
+        private Control BuildYouTubeSection()
         {
             _youtube.Dock = DockStyle.Fill;
             _youtube.Multiline = false;
@@ -805,10 +939,10 @@ namespace KnowledgeTrackerDesktop.UI.Views
             row.Controls.Add(_youtube, 0, 0);
             row.Controls.Add(_openVideo, 1, 0);
 
-            AddFormRow(_youtubeForm, Field("YouTube", row));
+            return Field("YouTube", row);
         }
 
-        private void BuildAttachmentsSection()
+        private Control BuildAttachmentsSection()
         {
             _attachments.Dock = DockStyle.Top;
             _attachments.AutoSize = true;
@@ -824,6 +958,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 Padding = new Padding(8, 0, 8, 0),
                 Anchor = AnchorStyles.Left,
                 Margin = new Padding(0, 4, 0, 0),
+                Tag = "+ Add file",
             };
             AppLocalization.Bind(add, "+ Add file");
             add.Click += (_, _) => AddAttachment();
@@ -857,18 +992,20 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 ColumnCount = 1,
-                RowCount = 2,
+                RowCount = 3,
                 Margin = Padding.Empty,
             };
             section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             section.Controls.Add(_attachments, 0, 0);
             section.Controls.Add(actions, 0, 1);
+            section.Controls.Add(BuildYouTubeSection(), 0, 2);
 
-            AddFormRow(_attachmentsForm, section);
+            return section;
         }
 
-        private void BuildComments()
+        private Control BuildCommentsSection()
         {
             _comments.Dock = DockStyle.Fill;
             _comments.Multiline = true;
@@ -877,7 +1014,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _comments.TextChanged += (_, _) => MarkDirty();
             ApplyThemedScrollFrame(_comments);
 
-            AddFormRow(_generalForm, Field("Comments", _comments));
+            return _comments;
         }
 
         private static void AddFormRow(TableLayoutPanel form, Control control)
@@ -885,6 +1022,19 @@ namespace KnowledgeTrackerDesktop.UI.Views
             control.Dock = DockStyle.Fill;
             control.Margin = new Padding(0, 0, 0, 12);
             form.Controls.Add(control);
+            form.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        }
+
+        /// <summary>
+        /// Adds a section card as a top-docked, auto-sized row. Sections must not
+        /// be dock-filled, otherwise the surrounding auto-size layout would
+        /// stretch their inputs instead of respecting their preferred height.
+        /// </summary>
+        private static void AddSectionRow(TableLayoutPanel form, Control section)
+        {
+            section.Dock = DockStyle.Top;
+            section.Margin = new Padding(0, 0, 0, 12);
+            form.Controls.Add(section);
             form.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         }
 
@@ -1077,38 +1227,65 @@ namespace KnowledgeTrackerDesktop.UI.Views
             gallery.ShowDialog(this);
         }
 
-        private void AddAttachment()
+        internal void AddAttachment()
         {
-            using var dialog = new OpenFileDialog
+            string[]? selectedFiles;
+            if (FilePicker is not null)
             {
-                Title = AppLocalization.Translate("Add attachment"),
-                Filter = AppLocalization.Translate("All files (*.*)|*.*"),
-                CheckFileExists = true,
-                Multiselect = false,
-            };
+                selectedFiles = FilePicker();
+            }
+            else
+            {
+                using var dialog = new OpenFileDialog
+                {
+                    Title = AppLocalization.Translate("Add attachment"),
+                    Filter = AppLocalization.Translate("All files (*.*)|*.*"),
+                    CheckFileExists = true,
+                    Multiselect = true,
+                };
 
-            if (dialog.ShowDialog(this) != DialogResult.OK)
+                if (dialog.ShowDialog(this) != DialogResult.OK)
+                {
+                    return;
+                }
+
+                selectedFiles = dialog.FileNames;
+            }
+
+            if (selectedFiles is null || selectedFiles.Length == 0)
             {
                 return;
             }
 
-            var path = dialog.FileName;
-            if (_entry.Attachments.Any(existing =>
-                    string.Equals(existing.FilePath, path, StringComparison.OrdinalIgnoreCase)))
+            var anyAdded = false;
+            foreach (var path in selectedFiles)
             {
-                return;
+                if (string.IsNullOrWhiteSpace(path))
+                {
+                    continue;
+                }
+
+                if (_entry.Attachments.Any(existing =>
+                        string.Equals(existing.FilePath, path, StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+
+                _entry.Attachments.Add(new AttachmentInfo
+                {
+                    KnowledgeEntryId = _entry.Id,
+                    FileName = Path.GetFileName(path),
+                    FilePath = path,
+                    DateAdded = DateTime.Now,
+                });
+                anyAdded = true;
             }
 
-            _entry.Attachments.Add(new AttachmentInfo
+            if (anyAdded)
             {
-                KnowledgeEntryId = _entry.Id,
-                FileName = Path.GetFileName(path),
-                FilePath = path,
-                DateAdded = DateTime.Now,
-            });
-
-            MarkDirty();
-            RefreshAttachments();
+                MarkDirty();
+                RefreshAttachments();
+            }
         }
 
         private void RemoveAttachment(AttachmentInfo attachment)
@@ -1118,41 +1295,8 @@ namespace KnowledgeTrackerDesktop.UI.Views
             RefreshAttachments();
         }
 
-        private void OpenAttachment(AttachmentInfo attachment)
-        {
-            var path = attachment.FilePath;
-            if (string.IsNullOrWhiteSpace(path))
-            {
-                return;
-            }
-
-            if (!File.Exists(path))
-            {
-                MessageBox.Show(
-                    string.Format(
-                        AppLocalization.Culture,
-                        AppLocalization.Translate("The file could not be found at the recorded location:\r\n\r\n{0}"),
-                        path),
-                    AppLocalization.Translate("Attachment"),
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
-                return;
-            }
-
-            try
-            {
-                Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine(ex);
-                MessageBox.Show(
-                    AppLocalization.Translate("The file could not be opened."),
-                    AppLocalization.Translate("Attachment"),
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
-            }
-        }
+        private void OpenAttachment(AttachmentInfo attachment) =>
+            EntryOpenActions.OpenAttachment(attachment);
 
         private void CopyCode()
         {
@@ -1182,32 +1326,9 @@ namespace KnowledgeTrackerDesktop.UI.Views
             form.ShowDialog(this);
         }
 
-        private void OpenUrl(string? url)
-        {
-            if (!IsHttpUrl(url))
-            {
-                return;
-            }
+        private void OpenUrl(string? url) => EntryOpenActions.OpenUrl(url);
 
-            try
-            {
-                Process.Start(new ProcessStartInfo(url!.Trim()) { UseShellExecute = true });
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine(ex);
-                MessageBox.Show(
-                    AppLocalization.Translate("The link could not be opened."),
-                    AppLocalization.Translate("YouTube"),
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
-            }
-        }
-
-        private static bool IsHttpUrl(string? url) =>
-            !string.IsNullOrWhiteSpace(url) &&
-            Uri.TryCreate(url.Trim(), UriKind.Absolute, out var uri) &&
-            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+        private static bool IsHttpUrl(string? url) => EntryOpenActions.IsHttpUrl(url);
 
         private void MarkDirty() => _dirty = true;
 
@@ -1240,6 +1361,14 @@ namespace KnowledgeTrackerDesktop.UI.Views
             if (title.Length == 0)
             {
                 ShowError("A title is required.");
+
+                // The title lives on the General tab, so make sure the user is
+                // looking at it when the validation message appears.
+                if (_editorTabs is not null && _editorTabs.TabPages.Count > 0)
+                {
+                    _editorTabs.SelectedIndex = 0;
+                }
+
                 _title.Focus();
                 return;
             }

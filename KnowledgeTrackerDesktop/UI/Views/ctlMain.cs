@@ -10,7 +10,8 @@ namespace KnowledgeTrackerDesktop.UI.Views
 {
     /// <summary>
     /// Library view (UI_DESIGN_SPEC section 4): a searchable/filterable card
-    /// grid. Presentation only; all data access goes through
+    /// grid on the left and a read-only preview of the selected entry on the
+    /// right. Presentation only; all data access goes through
     /// <see cref="IKnowledgeEntryService"/>.
     /// </summary>
     public class ctlMain : UserControl, IAppearingView
@@ -28,6 +29,8 @@ namespace KnowledgeTrackerDesktop.UI.Views
         private readonly INavigationService _navigation;
         private readonly IShellHost _shell;
 
+        private const int SearchDebounceMs = 250;
+
         private readonly TextBoxExt _search = new();
         private readonly SfButton _favoritesButton = new();
         private readonly SfButton _tagsButton = new();
@@ -37,9 +40,13 @@ namespace KnowledgeTrackerDesktop.UI.Views
         private readonly ToolStripDropDown _tagsDropDown = new();
         private readonly Label _countLabel = new();
         private readonly FlowLayoutPanel _cards = new();
+        private readonly ctlEntryPreview _preview = new();
+        private readonly SplitContainer _split = new();
         private readonly TableLayoutPanel _statePanel = new();
         private readonly Label _stateLabel = new();
         private readonly SfButton _retryButton = new();
+        private readonly SfButton _clearFiltersButton = new();
+        private readonly System.Windows.Forms.Timer _searchDebounce = new();
 
         private readonly List<KnowledgeEntry> _allEntries = new();
         private readonly HashSet<string> _selectedTags = new(StringComparer.OrdinalIgnoreCase);
@@ -49,6 +56,9 @@ namespace KnowledgeTrackerDesktop.UI.Views
         private bool _favoritesOnly;
         private bool _suppressEvents;
         private bool _initialRequestApplied;
+        private bool _splitLayoutApplied;
+        private bool _rebuildSuspended;
+        private bool _rebuildPending;
         private string? _pendingProject;
         private int _filteredCount;
 
@@ -63,6 +73,18 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _shell = shell ?? throw new ArgumentNullException(nameof(shell));
             _initialRequest = request;
             AppLocalization.LanguageChanged += OnLanguageChanged;
+
+            _searchDebounce.Interval = SearchDebounceMs;
+            _searchDebounce.Tick += OnSearchDebounceTick;
+
+            // The preview only raises intents; the view keeps owning how each
+            // action opens, exactly like the card events do.
+            _preview.EditRequested += OnPreviewEditRequested;
+            _preview.OpenCodeRequested += OnPreviewCodeRequested;
+            _preview.OpenAttachmentsRequested += OnPreviewAttachmentsRequested;
+            _preview.OpenAttachmentRequested += (_, attachment) =>
+                EntryOpenActions.OpenAttachment(attachment);
+            _preview.OpenLinkRequested += entry => EntryOpenActions.OpenUrl(entry.YouTubeUrl);
 
             Dock = DockStyle.Fill;
             BackColor = AppTheme.Background;
@@ -94,9 +116,18 @@ namespace KnowledgeTrackerDesktop.UI.Views
             if (disposing)
             {
                 AppLocalization.LanguageChanged -= OnLanguageChanged;
+                _searchDebounce.Stop();
+                _searchDebounce.Tick -= OnSearchDebounceTick;
+                _searchDebounce.Dispose();
             }
 
             base.Dispose(disposing);
+        }
+
+        private void OnSearchDebounceTick(object? sender, EventArgs e)
+        {
+            _searchDebounce.Stop();
+            RebuildList();
         }
 
         private void OnLanguageChanged(object? sender, EventArgs e)
@@ -120,8 +151,68 @@ namespace KnowledgeTrackerDesktop.UI.Views
             root.RowStyles.Add(new RowStyle(SizeType.Absolute, 76f));
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
             root.Controls.Add(BuildFilterBar(), 0, 0);
-            root.Controls.Add(BuildListHost(), 0, 1);
+            root.Controls.Add(BuildSplitHost(), 0, 1);
             return root;
+        }
+
+        /// <summary>
+        /// Splits the working area into the card list (left) and the read-only
+        /// preview (right). The splitter stays draggable and the preview keeps
+        /// its width when the window is resized, so the list absorbs the extra
+        /// room.
+        /// </summary>
+        private Control BuildSplitHost()
+        {
+            _split.Dock = DockStyle.Fill;
+            _split.FixedPanel = FixedPanel.Panel2;
+            _split.BackColor = AppTheme.CardBorder;
+            _split.Panel1.BackColor = AppTheme.Background;
+            _split.Panel2.BackColor = AppTheme.Surface;
+
+            // Applied from the split's own size change so the constraints are
+            // always evaluated against the width the panes really have.
+            _split.SizeChanged += (_, _) => ApplySplitLayout();
+
+            _split.Panel1.Controls.Add(BuildListHost());
+            _split.Panel2.Controls.Add(_preview);
+
+            return _split;
+        }
+
+        /// <summary>
+        /// Keeps both panes usable: the minimum sizes are applied as soon as the
+        /// view is wide enough for them and the initial splitter position is
+        /// chosen once, so a later drag by the user is never overridden.
+        /// </summary>
+        private void ApplySplitLayout()
+        {
+            if (_splitLayoutApplied)
+            {
+                return;
+            }
+
+            const int leftMinimum = 340;
+            const int rightMinimum = 380;
+            var available = _split.Width;
+
+            // Too narrow for both minimum sizes: leave the pane proportions
+            // alone rather than forcing a position the setters would reject.
+            if (available < leftMinimum + rightMinimum + _split.SplitterWidth)
+            {
+                return;
+            }
+
+            // Order matters: every setter validates the current splitter
+            // position, so it is parked at its minimum before the minimums are
+            // raised, and only then moved to the initial position.
+            _splitLayoutApplied = true;
+            _split.SplitterDistance = leftMinimum;
+            _split.Panel1MinSize = leftMinimum;
+            _split.Panel2MinSize = rightMinimum;
+            _split.SplitterDistance = Math.Clamp(
+                (int)(available * 0.6),
+                leftMinimum,
+                available - rightMinimum - _split.SplitterWidth);
         }
 
         private Control BuildFilterBar()
@@ -140,7 +231,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _search.Width = 260;
             _search.Anchor = AnchorStyles.Left;
             _search.Margin = new Padding(0, 4, 8, 4);
-            _search.TextChanged += (_, _) => RebuildList();
+            _search.TextChanged += (_, _) => RestartSearchDebounce();
 
             ConfigureToggleButton(_favoritesButton, "Favorites");
             _favoritesButton.Click += (_, _) => ToggleFavorites();
@@ -331,8 +422,15 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _retryButton.Click += async (_, _) => await LoadAsync();
             ButtonStyler.Apply(_retryButton, ButtonRole.Primary);
 
+            AppLocalization.Bind(_clearFiltersButton, "Clear filters");
+            _clearFiltersButton.Size = new Size(140, 32);
+            _clearFiltersButton.Visible = false;
+            _clearFiltersButton.Click += (_, _) => ClearFilters();
+            ButtonStyler.Apply(_clearFiltersButton, ButtonRole.Secondary);
+
             stateContent.Controls.Add(_stateLabel);
             stateContent.Controls.Add(_retryButton);
+            stateContent.Controls.Add(_clearFiltersButton);
             _statePanel.Controls.Add(stateContent, 0, 1);
 
             var listPane = new TableLayoutPanel
@@ -349,13 +447,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _countLabel.Font = AppTheme.Fonts.Caption;
             _countLabel.ForeColor = AppTheme.SecondaryText;
             _countLabel.Margin = Padding.Empty;
-            AppLocalization.Bind(_countLabel, () =>
-                _filteredCount == 1
-                    ? AppLocalization.Translate("1 entry")
-                    : string.Format(
-                        AppLocalization.Culture,
-                        AppLocalization.Translate("{0} entries"),
-                        _filteredCount));
+            AppLocalization.Bind(_countLabel, CountText);
             listPane.Controls.Add(_countLabel, 0, 0);
 
             var host = new Panel { Dock = DockStyle.Fill, BackColor = AppTheme.Background };
@@ -375,10 +467,20 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 _allEntries.Clear();
                 _allEntries.AddRange(entries);
 
-                if (_selectedEntryId is not null &&
-                    _allEntries.All(entry => entry.Id != _selectedEntryId))
+                // The reloaded entries are new instances, so the preview is
+                // re-pointed at the selected one or cleared when it is gone.
+                if (_selectedEntryId is { } selectedId)
                 {
-                    _selectedEntryId = null;
+                    var selected = _allEntries.FirstOrDefault(entry => entry.Id == selectedId);
+                    if (selected is null)
+                    {
+                        _selectedEntryId = null;
+                        _preview.Clear();
+                    }
+                    else
+                    {
+                        _preview.SetEntry(selected);
+                    }
                 }
 
                 ApplyInitialRequest();
@@ -464,6 +566,18 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
         private void RebuildList()
         {
+            if (_rebuildSuspended)
+            {
+                _rebuildPending = true;
+                return;
+            }
+
+            _rebuildPending = false;
+
+            // Any rebuild already reflects the latest search text, so a pending
+            // debounce tick would only repeat the same work.
+            _searchDebounce.Stop();
+
             var project = _projectFilter.SelectedIndex > 0
                 ? _projectFilter.SelectedItem as string
                 : null;
@@ -476,8 +590,17 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 CurrentSortMode(),
                 project);
 
+            // A selection that fell out of the current filter has no card left
+            // to represent it, so the preview must not keep showing it.
+            if (_selectedEntryId is not null &&
+                filtered.All(entry => entry.Id != _selectedEntryId))
+            {
+                _selectedEntryId = null;
+                _preview.Clear();
+            }
+
             _cards.SuspendLayout();
-            _cards.Controls.Clear();
+            ClearCards();
 
             foreach (var entry in filtered)
             {
@@ -498,6 +621,110 @@ namespace KnowledgeTrackerDesktop.UI.Views
             ApplyListState(filtered.Count);
         }
 
+        /// <summary>
+        /// Runs <paramref name="action"/> while coalescing list rebuilds: every
+        /// rebuild requested inside the action is deferred to a single rebuild
+        /// afterwards, so updating several filters at once does not rebuild the
+        /// card list repeatedly.
+        /// </summary>
+        private void SuspendRebuild(System.Action action)
+        {
+            ArgumentNullException.ThrowIfNull(action);
+
+            if (_rebuildSuspended)
+            {
+                action();
+                return;
+            }
+
+            _rebuildSuspended = true;
+            try
+            {
+                action();
+            }
+            finally
+            {
+                _rebuildSuspended = false;
+            }
+
+            if (_rebuildPending)
+            {
+                _rebuildPending = false;
+                RebuildList();
+            }
+        }
+
+        /// <summary>Removes and disposes the current cards so no GDI or menu
+        /// resources are leaked when the list is rebuilt.</summary>
+        private void ClearCards()
+        {
+            var cards = _cards.Controls.OfType<EntryCard>().ToArray();
+            _cards.Controls.Clear();
+
+            foreach (var card in cards)
+            {
+                card.Dispose();
+            }
+        }
+
+        private void RestartSearchDebounce()
+        {
+            _searchDebounce.Stop();
+            _searchDebounce.Start();
+        }
+
+        private bool HasActiveFilters() =>
+            !string.IsNullOrWhiteSpace(_search.Text) ||
+            _favoritesOnly ||
+            _selectedTags.Count > 0 ||
+            _projectFilter.SelectedIndex > 0;
+
+        private string CountText()
+        {
+            if (HasActiveFilters())
+            {
+                return string.Format(
+                    AppLocalization.Culture,
+                    AppLocalization.Translate("{0} of {1} entries"),
+                    _filteredCount,
+                    _allEntries.Count);
+            }
+
+            return _allEntries.Count == 1
+                ? AppLocalization.Translate("1 entry")
+                : string.Format(
+                    AppLocalization.Culture,
+                    AppLocalization.Translate("{0} entries"),
+                    _allEntries.Count);
+        }
+
+        private void ClearFilters()
+        {
+            SuspendRebuild(() =>
+            {
+                _search.Text = string.Empty;
+                _selectedTags.Clear();
+
+                _suppressEvents = true;
+                try
+                {
+                    _projectFilter.SelectedIndex = 0;
+                }
+                finally
+                {
+                    _suppressEvents = false;
+                }
+
+                _favoritesOnly = false;
+                UpdateFavoritesVisual();
+                RebuildTagFilters();
+
+                // Coalesced by SuspendRebuild into a single rebuild, which also
+                // cancels the debounce tick scheduled by clearing the search box.
+                RebuildList();
+            });
+        }
+
         private EntrySortMode CurrentSortMode()
         {
             var index = _sort.SelectedIndex;
@@ -510,6 +737,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
         {
             if (filteredCount > 0)
             {
+                _clearFiltersButton.Visible = false;
                 _statePanel.Visible = false;
                 _cards.Visible = true;
                 _cards.BringToFront();
@@ -526,13 +754,15 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
             ShowStateMessage(
                 "No entries match your search.\r\n\r\nTry a different search term or clear the filters.",
-                retry: false);
+                retry: false,
+                clearFilters: true);
         }
 
-        private void ShowStateMessage(string message, bool retry)
+        private void ShowStateMessage(string message, bool retry, bool clearFilters = false)
         {
             AppLocalization.Bind(_stateLabel, message);
             _retryButton.Visible = retry;
+            _clearFiltersButton.Visible = clearFilters;
             _cards.Visible = false;
             _statePanel.Visible = true;
             _statePanel.BringToFront();
@@ -548,6 +778,9 @@ namespace KnowledgeTrackerDesktop.UI.Views
                     other.SetSelected(other.Entry.Id == _selectedEntryId);
                 }
             }
+
+            // Selection is a preview concern: no navigation happens here.
+            _preview.SetEntry(card.Entry);
         }
 
         private void OnCardOpenRequested(EntryCard card)
@@ -563,6 +796,11 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 await _service.ToggleFavoriteAsync(card.Entry);
                 card.RefreshFavorite();
                 RebuildList();
+
+                if (_selectedEntryId == card.Entry.Id)
+                {
+                    _preview.SetEntry(card.Entry);
+                }
             }
             catch (Exception ex)
             {
@@ -598,6 +836,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 if (_selectedEntryId == card.Entry.Id)
                 {
                     _selectedEntryId = null;
+                    _preview.Clear();
                 }
 
                 PopulateFilters();
@@ -611,6 +850,43 @@ namespace KnowledgeTrackerDesktop.UI.Views
                     "KnowledgeTracker",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning);
+            }
+        }
+
+        private void OnPreviewEditRequested(KnowledgeEntry entry)
+        {
+            _selectedEntryId = entry.Id;
+            _navigation.NavigateTo<ctlAddEdit>(new EntryEditorRequest(entry));
+        }
+
+        private void OnPreviewCodeRequested(KnowledgeEntry entry)
+        {
+            if (string.IsNullOrWhiteSpace(entry.CodeSnippet))
+            {
+                return;
+            }
+
+            using var form = new CodePreviewForm(entry.CodeSnippet);
+            form.ShowDialog(this);
+        }
+
+        /// <summary>
+        /// Keeps the editor's attachment behaviour: the gallery when the entry
+        /// has images, otherwise every file is opened with its default app.
+        /// </summary>
+        private void OnPreviewAttachmentsRequested(KnowledgeEntry entry)
+        {
+            var images = entry.Attachments.Where(ImageGalleryForm.IsImage).ToList();
+            if (images.Count > 0)
+            {
+                using var gallery = new ImageGalleryForm(images);
+                gallery.ShowDialog(this);
+                return;
+            }
+
+            foreach (var attachment in entry.Attachments)
+            {
+                EntryOpenActions.OpenAttachment(attachment);
             }
         }
 

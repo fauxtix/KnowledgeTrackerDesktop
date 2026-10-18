@@ -278,5 +278,135 @@ namespace KnowledgeTrackerDesktop.Tests.UI
         {
             Assert.Empty(EntryListFilter.CollectTags(Array.Empty<KnowledgeEntry>()));
         }
+
+        [Fact]
+        public void MatchesSearch_FindsTextInResolutionSteps_CaseInsensitive()
+        {
+            var entry = Entry(id: 1, title: "Bug");
+            entry.ResolutionSteps = "Restarted the service successfully.";
+
+            Assert.True(EntryListFilter.MatchesSearch(entry, "service"));
+            Assert.True(EntryListFilter.MatchesSearch(entry, "SUCCESSFULLY"));
+            Assert.False(EntryListFilter.MatchesSearch(entry, "network"));
+        }
+
+        [Fact]
+        public void MatchesSearch_FindsTextInStepDescriptions_CaseInsensitive()
+        {
+            var entry = Entry(id: 1, title: "Issue");
+            entry.Steps.Add(new Step { Id = 1, KnowledgeEntryId = 1, Description = "Check firewall rules" });
+            entry.Steps.Add(new Step { Id = 2, KnowledgeEntryId = 1, Description = "Test connection" });
+
+            Assert.True(EntryListFilter.MatchesSearch(entry, "firewall"));
+            Assert.True(EntryListFilter.MatchesSearch(entry, "CONNECTION"));
+            Assert.False(EntryListFilter.MatchesSearch(entry, "dns"));
+        }
+
+        [Fact]
+        public void MatchesSearch_FindsTextInAttachmentFileNames_CaseInsensitive()
+        {
+            var entry = Entry(id: 1, title: "Log");
+            entry.Attachments.Add(new AttachmentInfo { Id = 1, KnowledgeEntryId = 1, FileName = "error.log" });
+            entry.Attachments.Add(new AttachmentInfo { Id = 2, KnowledgeEntryId = 1, FileName = "StackTrace.txt" });
+
+            Assert.True(EntryListFilter.MatchesSearch(entry, "log"));
+            Assert.True(EntryListFilter.MatchesSearch(entry, "STACK"));
+            Assert.False(EntryListFilter.MatchesSearch(entry, "report"));
+        }
+
+        [Fact]
+        public void MatchesSearch_NullStepsOrAttachments_DoesNotThrow()
+        {
+            var entry = Entry(id: 1, title: "matchable title");
+            entry.Steps = null!;
+            entry.Attachments = null!;
+
+            Assert.True(EntryListFilter.MatchesSearch(entry, "matchable"));
+            Assert.False(EntryListFilter.MatchesSearch(entry, "nothing"));
+        }
+
+        [Fact]
+        public void Apply_SearchCombinesWithProjectTagsAndFavorites()
+        {
+            var source = new[]
+            {
+                Entry(id: 1, title: "Auth", project: "App", tags: "auth;security", isFavorite: true, description: "OAuth flow"),
+                Entry(id: 2, title: "Auth", project: "App", tags: "auth", isFavorite: false, description: "OAuth flow"),
+                Entry(id: 3, title: "Auth", project: "Web", tags: "auth;security", isFavorite: true, description: "OAuth flow"),
+                Entry(id: 4, title: "Other", project: "App", tags: "auth;security", isFavorite: true, description: "Unrelated"),
+            };
+
+            var selectedTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "auth", "security" };
+            var result = EntryListFilter.Apply(
+                source,
+                "oauth",
+                selectedTags,
+                favoritesOnly: true,
+                EntrySortMode.TitleAscending,
+                projectName: "App");
+
+            Assert.Equal(new[] { 1 }, result.Select(e => e.Id));
+        }
+
+        [Fact]
+        public void Apply_SearchOnStepOrAttachmentFields_DoesNotReturnFalsePositives()
+        {
+            var entry = Entry(id: 1, title: "Test");
+            entry.Steps.Add(new Step { Description = "step one" });
+            entry.Attachments.Add(new AttachmentInfo { FileName = "file.txt" });
+            entry.ResolutionSteps = "fixed";
+
+            var result = EntryListFilter.Apply(
+                new[] { entry },
+                "missing",
+                new HashSet<string>(),
+                favoritesOnly: false,
+                EntrySortMode.TitleAscending);
+
+            Assert.Empty(result);
+        }
+
+        [Fact]
+        public void Apply_SearchInStepDescription_RespectsOtherFilters()
+        {
+            var source = new[]
+            {
+                Entry(id: 1, project: "App", tags: "bug", title: "Alpha"),
+                Entry(id: 2, project: "Web", tags: "bug", title: "Beta"),
+            };
+            source[0].Steps.Add(new Step { Description = "restarted iis apppool" });
+            source[1].Steps.Add(new Step { Description = "restarted iis apppool" });
+
+            var result = EntryListFilter.Apply(
+                source,
+                "apppool",
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "bug" },
+                favoritesOnly: false,
+                EntrySortMode.TitleAscending,
+                projectName: "App");
+
+            Assert.Equal(new[] { 1 }, result.Select(e => e.Id));
+        }
+
+        [Fact]
+        public void Apply_SearchWithSort_PreservesSortOrder()
+        {
+            var source = new[]
+            {
+                Entry(id: 1, title: "Alpha", description: "needle", dateResolved: new DateTime(2020, 1, 1)),
+                Entry(id: 2, title: "Beta", description: "needle", dateResolved: new DateTime(2021, 1, 1)),
+                Entry(id: 3, title: "Gamma", description: "other", dateResolved: new DateTime(2022, 1, 1)),
+            };
+
+            var descending = EntryListFilter.Apply(
+                source, "needle", new HashSet<string>(), favoritesOnly: false,
+                EntrySortMode.DateResolvedDescending);
+            Assert.Equal(new[] { 2, 1 }, descending.Select(e => e.Id));
+
+            var ascending = EntryListFilter.Apply(
+                source, "needle", new HashSet<string>(), favoritesOnly: false,
+                EntrySortMode.DateResolvedAscending);
+            Assert.Equal(new[] { 1, 2 }, ascending.Select(e => e.Id));
+        }
     }
 }

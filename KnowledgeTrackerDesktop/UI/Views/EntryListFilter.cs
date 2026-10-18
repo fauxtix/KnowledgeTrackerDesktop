@@ -39,7 +39,10 @@ namespace KnowledgeTrackerDesktop.UI.Views
         }
 
         /// <summary>
-        /// Case-insensitive search across every field listed in PRD section 10.
+        /// Case-insensitive substring search across the entry fields listed in
+        /// PRD section 10 plus <see cref="KnowledgeEntry.ResolutionSteps"/>, the
+        /// description of every <see cref="Step"/> and the file name of every
+        /// <see cref="AttachmentInfo"/>. Attachment contents are never read.
         /// An empty or whitespace query matches every entry.
         /// </summary>
         public static bool MatchesSearch(KnowledgeEntry entry, string? query)
@@ -52,13 +55,41 @@ namespace KnowledgeTrackerDesktop.UI.Views
             }
 
             var needle = query.Trim();
-            return Contains(entry.Title, needle) ||
+            if (Contains(entry.Title, needle) ||
                 Contains(entry.Description, needle) ||
                 Contains(entry.ProjectName, needle) ||
                 Contains(entry.Technologies, needle) ||
                 Contains(entry.Tags, needle) ||
                 Contains(entry.Comments, needle) ||
-                Contains(entry.CodeSnippet, needle);
+                Contains(entry.CodeSnippet, needle) ||
+                Contains(entry.ResolutionSteps, needle))
+            {
+                return true;
+            }
+
+            if (entry.Steps is not null)
+            {
+                foreach (var step in entry.Steps)
+                {
+                    if (Contains(step.Description, needle))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            if (entry.Attachments is not null)
+            {
+                foreach (var attachment in entry.Attachments)
+                {
+                    if (Contains(attachment.FileName, needle))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         /// <summary>Index of the entry with the given stable Id, or -1.</summary>
