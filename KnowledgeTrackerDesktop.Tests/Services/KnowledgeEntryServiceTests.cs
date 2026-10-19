@@ -34,7 +34,7 @@ namespace KnowledgeTrackerDesktop.Tests.Services
         [Fact]
         public async Task SaveAsync_PersistsEntryWithChildren()
         {
-            var entry = new KnowledgeEntry { Title = "Service entry" };
+            var entry = CreateValidEntry("Service entry");
             entry.Steps.Add(new Step { Description = "one" });
             entry.Attachments.Add(new AttachmentInfo
             {
@@ -54,7 +54,7 @@ namespace KnowledgeTrackerDesktop.Tests.Services
         [Fact]
         public async Task SaveAsync_RemovedSteps_AreDeletedFromDatabase()
         {
-            var entry = new KnowledgeEntry { Title = "Service steps entry" };
+            var entry = CreateValidEntry("Service steps entry");
             entry.Steps.Add(new Step { Description = "keep" });
             entry.Steps.Add(new Step { Description = "remove" });
             await _service.SaveAsync(entry);
@@ -72,7 +72,7 @@ namespace KnowledgeTrackerDesktop.Tests.Services
         [Fact]
         public async Task SaveAsync_EmptyStepsCollection_RemovesAllPersistedSteps()
         {
-            var entry = new KnowledgeEntry { Title = "Empty steps entry" };
+            var entry = CreateValidEntry("Empty steps entry");
             entry.Steps.Add(new Step { Description = "one" });
             entry.Steps.Add(new Step { Description = "two" });
             await _service.SaveAsync(entry);
@@ -90,9 +90,27 @@ namespace KnowledgeTrackerDesktop.Tests.Services
         [Fact]
         public async Task SaveAsync_EmptyTitle_ThrowsAndPersistsNothing()
         {
-            var entry = new KnowledgeEntry { Title = "   " };
+            var entry = CreateValidEntry("   ");
 
             await Assert.ThrowsAsync<ArgumentException>(() => _service.SaveAsync(entry));
+
+            var count = await _connection.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM \"KnowledgeEntry\"");
+            Assert.Equal(0, count);
+        }
+
+        [Fact]
+        public async Task SaveAsync_EntryBreakingARule_ThrowsListingTheProblemsAndPersistsNothing()
+        {
+            var entry = CreateValidEntry("Half filled");
+            entry.Tags = "a,,b";
+
+            var exception = await Assert.ThrowsAsync<ArgumentException>(
+                () => _service.SaveAsync(entry));
+
+            Assert.Contains(
+                "Tags must be a comma or semicolon separated list without empty items.",
+                exception.Message);
 
             var count = await _connection.ExecuteScalarAsync<int>(
                 "SELECT COUNT(*) FROM \"KnowledgeEntry\"");
@@ -109,7 +127,7 @@ namespace KnowledgeTrackerDesktop.Tests.Services
         [Fact]
         public async Task DeleteAsync_RemovesEntryAndChildren()
         {
-            var entry = new KnowledgeEntry { Title = "Doomed" };
+            var entry = CreateValidEntry("Doomed");
             entry.Steps.Add(new Step { Description = "s" });
             entry.Attachments.Add(new AttachmentInfo { FileName = "f.txt", FilePath = @"C:\f.txt" });
             await _service.SaveAsync(entry);
@@ -132,7 +150,7 @@ namespace KnowledgeTrackerDesktop.Tests.Services
         [Fact]
         public async Task ToggleFavoriteAsync_PersistsImmediately_WithoutTouchingSteps()
         {
-            var entry = new KnowledgeEntry { Title = "Favoritable" };
+            var entry = CreateValidEntry("Favoritable");
             entry.Steps.Add(new Step { Description = "keep me" });
             entry.Attachments.Add(new AttachmentInfo { FileName = "keep.txt", FilePath = @"C:\keep.txt" });
             await _service.SaveAsync(entry);
@@ -155,7 +173,7 @@ namespace KnowledgeTrackerDesktop.Tests.Services
         [Fact]
         public async Task ToggleFavoriteAsync_TogglesInBothDirections()
         {
-            var entry = new KnowledgeEntry { Title = "Toggle" };
+            var entry = CreateValidEntry("Toggle");
             await _service.SaveAsync(entry);
             Assert.False(entry.IsFavorite);
 
@@ -180,7 +198,7 @@ namespace KnowledgeTrackerDesktop.Tests.Services
         [Fact]
         public async Task ToggleFavoriteAsync_StaleEntryThrowsAndDoesNotChangeInMemoryState()
         {
-            var entry = new KnowledgeEntry { Title = "Will be removed" };
+            var entry = CreateValidEntry("Will be removed");
             await _service.SaveAsync(entry);
             await _service.DeleteAsync(entry.Id);
             var stale = new KnowledgeEntry { Id = entry.Id, IsFavorite = false };
@@ -194,9 +212,9 @@ namespace KnowledgeTrackerDesktop.Tests.Services
         [Fact]
         public async Task GetAllAsync_ReturnsEntriesWithChildren()
         {
-            var first = new KnowledgeEntry { Title = "First" };
+            var first = CreateValidEntry("First");
             first.Steps.Add(new Step { Description = "f" });
-            var second = new KnowledgeEntry { Title = "Second" };
+            var second = CreateValidEntry("Second");
             await _service.SaveAsync(first);
             await _service.SaveAsync(second);
 
@@ -212,5 +230,34 @@ namespace KnowledgeTrackerDesktop.Tests.Services
         {
             Assert.Null(await _service.GetByIdAsync(4242));
         }
+
+        [Fact]
+        public async Task GetAllTagsAsync_ReturnsDistinctOrderedValues()
+        {
+            var first = CreateValidEntry("One");
+            first.Tags = "sqlite;winforms";
+            var second = CreateValidEntry("Two");
+            second.Tags = "sqlite";
+            await _service.SaveAsync(first);
+            await _service.SaveAsync(second);
+
+            Assert.Equal(new[] { "sqlite", "winforms" }, await _service.GetAllTagsAsync());
+            Assert.Equal(new[] { "C#", "WinForms" }, await _service.GetAllTechnologiesAsync());
+        }
+
+        /// <summary>
+        /// Saves go through <see cref="EntryValidator"/>, so service tests
+        /// start from an entry that satisfies every required rule and only
+        /// bend the field each test is about.
+        /// </summary>
+        private static KnowledgeEntry CreateValidEntry(string title) => new()
+        {
+            Title = title,
+            ProjectName = "KnowledgeTracker",
+            Technologies = "C#; WinForms",
+            DateResolved = new DateTime(2026, 10, 1),
+            Tags = "sqlite; validation",
+            Description = "A documented solution.",
+        };
     }
 }

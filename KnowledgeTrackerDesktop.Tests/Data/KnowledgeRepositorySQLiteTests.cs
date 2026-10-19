@@ -369,5 +369,40 @@ namespace KnowledgeTrackerDesktop.Tests.Data
         {
             await _repository.DeleteAsync(12345);
         }
+
+        [Fact]
+        public async Task GetAllTagsAsync_DeduplicatesAcrossEntries_AndOrdersByFrequency()
+        {
+            await _repository.SaveAsync(new KnowledgeEntry
+            {
+                Title = "first",
+                Tags = "sqlite;winforms",
+            });
+            await _repository.SaveAsync(new KnowledgeEntry
+            {
+                Title = "second",
+                Tags = "sqlite, SQLite;di",
+            });
+
+            var tags = await _repository.GetAllTagsAsync();
+
+            // 'sqlite' appears three times (case-insensitive), 'winforms' and
+            // 'di' once; ties break alphabetically and the first spelling wins.
+            Assert.Equal(new[] { "sqlite", "di", "winforms" }, tags);
+        }
+
+        [Fact]
+        public async Task GetAllTechnologiesAsync_ReturnsDistinctValues_EmptyWhenNoEntries()
+        {
+            Assert.Empty(await _repository.GetAllTechnologiesAsync());
+
+            await _repository.SaveAsync(new KnowledgeEntry
+            {
+                Title = "technologies",
+                Technologies = "C#;C#; WinForms",
+            });
+
+            Assert.Equal(new[] { "C#", "WinForms" }, await _repository.GetAllTechnologiesAsync());
+        }
     }
 }

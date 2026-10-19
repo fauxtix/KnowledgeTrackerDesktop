@@ -42,6 +42,10 @@ namespace KnowledgeTrackerDesktop.UI.Views
         private readonly SfButton _openGallery = new();
         private readonly TextBoxExt _comments = new();
         private readonly Label _errorLabel = new();
+        private AutoComplete? _technologiesAutoComplete;
+        private AutoComplete? _tagsAutoComplete;
+        private IReadOnlyList<string> _knownTags = Array.Empty<string>();
+        private IReadOnlyList<string> _knownTechnologies = Array.Empty<string>();
         private readonly TableLayoutPanel _generalForm = new();
         private readonly TableLayoutPanel _stepsForm = new();
         private readonly TableLayoutPanel _codeForm = new();
@@ -97,7 +101,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
         private void OnLanguageChanged(object? sender, EventArgs e) => AppLocalization.Apply(this);
 
-        public Task OnAppearingAsync()
+        public async Task OnAppearingAsync()
         {
             if (_isNew)
             {
@@ -105,7 +109,29 @@ namespace KnowledgeTrackerDesktop.UI.Views
             }
 
             SetHeader();
-            return Task.CompletedTask;
+            await LoadSuggestionDataAsync();
+        }
+
+        /// <summary>
+        /// Loads the distinct tags/technologies of the library to feed the
+        /// AutoComplete dropdowns. Suggestions are a convenience: if the load
+        /// fails the editor stays fully usable without them.
+        /// </summary>
+        private async Task LoadSuggestionDataAsync()
+        {
+            try
+            {
+                _knownTags = await _service.GetAllTagsAsync();
+                _knownTechnologies = await _service.GetAllTechnologiesAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+                _knownTags = Array.Empty<string>();
+                _knownTechnologies = Array.Empty<string>();
+            }
+
+            AttachSuggestionAutoCompletes();
         }
 
         private void SetHeader()
@@ -434,6 +460,9 @@ namespace KnowledgeTrackerDesktop.UI.Views
             {
                 AppLocalization.LanguageChanged -= OnLanguageChanged;
 
+                _technologiesAutoComplete?.Dispose();
+                _tagsAutoComplete?.Dispose();
+
                 foreach (var scrollFrame in _scrollFrames)
                 {
                     scrollFrame.Dispose();
@@ -453,7 +482,11 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
             _technologies.Dock = DockStyle.Fill;
             _technologies.Multiline = false;
-            _technologies.TextChanged += (_, _) => MarkDirty();
+            _technologies.TextChanged += (_, _) =>
+            {
+                MarkDirty();
+                ShowSuggestionPopup(_technologies, _technologiesAutoComplete);
+            };
 
             _date.AllowNull = true;
             _date.Watermark = "Not set";
@@ -464,7 +497,11 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
             _tags.Dock = DockStyle.Fill;
             _tags.Multiline = false;
-            _tags.TextChanged += (_, _) => MarkDirty();
+            _tags.TextChanged += (_, _) =>
+            {
+                MarkDirty();
+                ShowSuggestionPopup(_tags, _tagsAutoComplete);
+            };
 
             _favorite.AutoSize = true;
             AppLocalization.Bind(_favorite, "Favorite");
@@ -1074,6 +1111,160 @@ namespace KnowledgeTrackerDesktop.UI.Views
             return label;
         }
 
+        /// <summary>
+        /// Wires the official Syncfusion AutoComplete dropdowns of the
+        /// Technologies and Tags fields to the values already used in the
+        /// library (most used first, as returned by the service).
+        /// </summary>
+        private void AttachSuggestionAutoCompletes()
+        {
+            // Re-entry safe: appearing twice (e.g. re-displaying the view)
+            // must not stack components on the same target.
+            _technologiesAutoComplete?.Dispose();
+            _tagsAutoComplete?.Dispose();
+
+            _technologiesAutoComplete = CreateFieldAutoComplete(_technologies, _knownTechnologies);
+            _tagsAutoComplete = CreateFieldAutoComplete(_tags, _knownTags);
+        }
+
+        /// <summary>
+        /// Creates one AutoComplete per field (each has its own DataSource)
+        /// with the AutoSuggest mode: the dropdown opens while typing and the
+        /// user stays free to write any value. The component is a legacy
+        /// Syncfusion control, so it cannot load the custom CarbonDark theme
+        /// name (see CarbonTheme) and is styled explicitly instead.
+        /// </summary>
+        private AutoComplete CreateFieldAutoComplete(TextBoxExt target, IReadOnlyList<string> knownValues)
+        {
+            var autoComplete = new AutoComplete
+            {
+                Style = AutoCompleteStyle.Office2016DarkGray,
+                // Manual mode delegates every match decision to the MatchItem
+                // handler below. The default mode (Automatic) filters the list
+                // internally and never raises MatchItem, so the "already used"
+                // rule would be silently ignored.
+                MatchMode = AutoCompleteMatchModes.Manual,
+                // CaseSensitive defaults to true in the component; both flags are
+                // set so matching stays case-insensitive either way.
+                IgnoreCase = true,
+                CaseSensitive = false,
+                MaxNumberofSuggestion = 12,
+                ShowColumnHeader = false,
+                // The service already returns the values ordered by frequency.
+                AutoSortList = false,
+                // Never persist user-typed values as per-control history.
+                AutoAddItem = false,
+                AutoSerialize = false,
+                AutoPersistentDropDownSize = false,
+                ItemFont = AppTheme.Fonts.Input,
+                MetroColor = CarbonPalette.Accent,
+                ParentForm = FindForm(),
+            };
+            autoComplete.DataSource = new List<string>(knownValues);
+
+            // Both fields store "a, b, c" lists while the component matches
+            // the whole control text against the candidates: from the second
+            // value on nothing matched anymore and the dropdown closed right
+            // after a separator. AutoCompleteCustomize is the component's
+            // documented hook to tell it which text to match, so it receives
+            // only the token being typed ("sqlite, wi" -> "wi", "" right
+            // after a separator) and the dropdown stays useful for every
+            // value of the list. The component only honours the new text
+            // together with Handled = true, and only runs the matching
+            // routine when that text is non-empty, so an empty token (caret
+            // right after a separator, where no used value should be
+            // suggested either) is reported as a blank. The real filtering
+            // is done by MatchItem from the field text, not from this text.
+            autoComplete.AutoCompleteCustomize += (_, e) =>
+            {
+                var token = TagSuggestionHelper.CurrentToken(target.Text).Trim();
+                e.TextForAutoCompletion = token.Length > 0 ? token : " ";
+                e.Handled = true;
+            };
+
+            // Never re-offer a value the field already contains — in edit
+            // mode picking one would create a duplicate the validator blocks
+            // on save (user-requested rule: suggest everything still
+            // missing). The field text is the source of truth here, not the
+            // matched text above. In the component's Manual match mode an
+            // item with Cancel set (i.e. a rejected match) is left out of the
+            // dropdown.
+            autoComplete.MatchItem += (_, e) =>
+                e.Cancel = !TagSuggestionHelper.ShouldOffer(target.Text, e.PossibleMatch);
+
+            autoComplete.AutoCompleteItemSelected += (_, e) =>
+                ApplyPickedSuggestion(target, e);
+            autoComplete.SetAutoComplete(target, AutoCompleteModes.AutoSuggest);
+            return autoComplete;
+        }
+
+        /// <summary>
+        /// Writes the picked suggestion into the token being typed, keeping
+        /// the previously typed values and separators ("sqlite, wi" plus
+        /// "winforms" becomes "sqlite, winforms, "). The component always
+        /// replaces the whole control text with <see cref="AutoCompleteItemEventArgs.SelectedValue"/>
+        /// once the event returns (its own SetSelectedValue routine), so the
+        /// composed list is handed back through SelectedValue; marking the
+        /// event handled without replacing the value makes the component
+        /// apply the raw item and wipe the other values that were already in
+        /// the field. The separator is appended right away so several values
+        /// can be picked in a row (user-chosen flow: pick, pick, pick) and
+        /// the popup reopens through the field's own TextChanged
+        /// notification.
+        /// </summary>
+        private void ApplyPickedSuggestion(TextBoxExt target, AutoCompleteItemEventArgs e)
+        {
+            var value = e.SelectedValue;
+            if (string.IsNullOrWhiteSpace(value) && e.ItemArray is { Length: > 0 })
+            {
+                value = Convert.ToString(e.ItemArray[0]);
+            }
+
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return;
+            }
+
+            e.SelectedValue = TagSuggestionHelper.AppendSeparator(
+                TagSuggestionHelper.ReplaceCurrentToken(target.Text, value!));
+            e.Handled = true;
+        }
+
+        /// <summary>
+        /// Reopens the suggestion dropdown when the field is ready for a new
+        /// value, i.e. its current token is empty (the user typed a separator,
+        /// picked a value or cleared the field). The call is posted so it runs
+        /// after the component's own text handling — otherwise the component
+        /// re-evaluates the field text right after us and closes the dropdown
+        /// it just showed. ProcessAutoComplete is the component's own matching
+        /// API, so its state stays consistent.
+        /// </summary>
+        private static void ShowSuggestionPopup(TextBoxExt target, AutoComplete? autoComplete)
+        {
+            if (autoComplete is null ||
+                !target.IsHandleCreated ||
+                target.IsDisposed ||
+                !target.Focused)
+            {
+                return;
+            }
+
+            if (TagSuggestionHelper.CurrentToken(target.Text).Trim().Length > 0)
+            {
+                return;
+            }
+
+            target.BeginInvoke(new System.Action(() =>
+            {
+                if (target.IsDisposed || !target.Focused)
+                {
+                    return;
+                }
+
+                autoComplete.ProcessAutoComplete(string.Empty);
+            }));
+        }
+
         private void LoadEntryIntoControls()
         {
             _title.Text = _entry.Title;
@@ -1336,9 +1527,13 @@ namespace KnowledgeTrackerDesktop.UI.Views
         {
             _entry.Title = _title.Text.Trim();
             _entry.ProjectName = NullIfBlank(_project.Text);
-            _entry.Technologies = NullIfBlank(_technologies.Text);
+            // The list fields keep the auto-appended separator while editing
+            // (pick, pick, pick); the saved value drops the trailing one.
+            _entry.Technologies = NullIfBlank(
+                TagSuggestionHelper.TrimTrailingSeparators(_technologies.Text));
             _entry.DateResolved = _date.Value;
-            _entry.Tags = NullIfBlank(_tags.Text);
+            _entry.Tags = NullIfBlank(
+                TagSuggestionHelper.TrimTrailingSeparators(_tags.Text));
             _entry.IsFavorite = _favorite.Checked;
             _entry.Steps.Clear();
             for (var index = 0; index < _workingSteps.Count; index++)
@@ -1357,24 +1552,15 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
         private async Task SaveAsync()
         {
-            var title = _title.Text.Trim();
-            if (title.Length == 0)
-            {
-                ShowError("A title is required.");
-
-                // The title lives on the General tab, so make sure the user is
-                // looking at it when the validation message appears.
-                if (_editorTabs is not null && _editorTabs.TabPages.Count > 0)
-                {
-                    _editorTabs.SelectedIndex = 0;
-                }
-
-                _title.Focus();
-                return;
-            }
-
             HideError();
             ApplyToEntry();
+
+            var errors = EntryValidator.Validate(_entry);
+            if (errors.Count > 0)
+            {
+                ShowValidationError(errors[0]);
+                return;
+            }
 
             try
             {
@@ -1435,6 +1621,53 @@ namespace KnowledgeTrackerDesktop.UI.Views
             }
 
             return base.ProcessCmdKey(ref msg, keyData);
+        }
+
+        /// <summary>
+        /// Surfaces a validation problem above the tab strip and steers the
+        /// user to the field that needs fixing: the field's tab becomes active
+        /// and its Syncfusion input receives focus.
+        /// </summary>
+        private void ShowValidationError(EntryValidationError error)
+        {
+            ShowError(AppLocalization.Translate(error.Message));
+            RevealField(FieldControl(error.Field));
+        }
+
+        private Control FieldControl(EntryField field) =>
+            field switch
+            {
+                EntryField.ProjectName => _project,
+                EntryField.Technologies => _technologies,
+                EntryField.DateResolved => _date,
+                EntryField.Tags => _tags,
+                EntryField.Description => _description,
+                EntryField.YouTubeUrl => _youtube,
+                _ => _title,
+            };
+
+        private void RevealField(Control control)
+        {
+            // Activate the tab that hosts the field by walking up from the
+            // input to its TabPageAdv, so the mapping survives layout changes.
+            if (_editorTabs is not null)
+            {
+                for (var parent = control.Parent; parent is not null; parent = parent.Parent)
+                {
+                    if (parent is TabPageAdv page)
+                    {
+                        var index = _editorTabs.TabPages.IndexOf(page);
+                        if (index >= 0)
+                        {
+                            _editorTabs.SelectedIndex = index;
+                        }
+
+                        break;
+                    }
+                }
+            }
+
+            control.Focus();
         }
 
         private void ShowError(string message)

@@ -446,6 +446,101 @@ public sealed class EditorStepsVisibilityTests
     }
 
     [Fact]
+    public void SaveValidationErrorForTheDescriptionStaysOnTheGeneralTabAndShowsTheMessage()
+    {
+        var entry = CompleteEntry(10);
+        entry.Description = null;
+
+        using var editor = new ctlAddEdit(
+            new FakeEntryService(),
+            new FakeNavigation(),
+            new FakeShellHost(),
+            new EntryEditorRequest(entry))
+        {
+            Size = new Size(1200, 800),
+        };
+        editor.PerformLayout();
+        editor.OnAppearingAsync();
+
+        var tabs = Descendants(editor).OfType<TabControlAdv>().Single();
+        tabs.SelectedIndex = 2;
+
+        var save = (SfButton)FieldOf(editor, "_saveButton");
+        save.PerformClick();
+
+        var error = (Label)FieldOf(editor, "_errorLabel");
+        Assert.True(error.Visible);
+        Assert.Equal("A description is required.", error.Tag);
+        Assert.Equal(0, tabs.SelectedIndex);
+    }
+
+    [Fact]
+    public void SaveValidationErrorForTheYouTubeUrlOpensTheAttachmentsTab()
+    {
+        using var editor = new ctlAddEdit(
+            new FakeEntryService(),
+            new FakeNavigation(),
+            new FakeShellHost(),
+            new EntryEditorRequest(CompleteEntry(11)))
+        {
+            Size = new Size(1200, 800),
+        };
+        editor.PerformLayout();
+        editor.OnAppearingAsync();
+
+        var tabs = Descendants(editor).OfType<TabControlAdv>().Single();
+        tabs.SelectedIndex = 0;
+
+        var youtube = (TextBoxExt)FieldOf(editor, "_youtube");
+        youtube.Text = "not a url";
+
+        var save = (SfButton)FieldOf(editor, "_saveButton");
+        save.PerformClick();
+
+        var error = (Label)FieldOf(editor, "_errorLabel");
+        Assert.True(error.Visible);
+        Assert.Equal("The YouTube URL must be a valid http(s) link.", error.Tag);
+        Assert.Equal(3, tabs.SelectedIndex);
+    }
+
+    [Fact]
+    public async Task SuggestionAutoCompletesAreAttachedToTagsAndTechnologies()
+    {
+        var service = new FakeEntryService
+        {
+            Tags = new[] { "sqlite", "winforms" },
+            Technologies = new[] { "C#" },
+        };
+        using var editor = new ctlAddEdit(
+            service,
+            new FakeNavigation(),
+            new FakeShellHost(),
+            new EntryEditorRequest(CompleteEntry(12)))
+        {
+            Size = new Size(1200, 800),
+        };
+        editor.PerformLayout();
+        await editor.OnAppearingAsync();
+
+        var tags = (TextBoxExt)FieldOf(editor, "_tags");
+        var technologies = (TextBoxExt)FieldOf(editor, "_technologies");
+
+        // Both fields get the official Syncfusion AutoComplete attached in
+        // suggest mode, each one fed with the values the library knows.
+        var tagsAutoComplete = PrivateField<AutoComplete>(editor, "_tagsAutoComplete");
+        var technologiesAutoComplete = PrivateField<AutoComplete>(editor, "_technologiesAutoComplete");
+        Assert.NotNull(tagsAutoComplete);
+        Assert.NotNull(technologiesAutoComplete);
+        Assert.Equal(AutoCompleteModes.AutoSuggest, tagsAutoComplete.GetAutoComplete(tags));
+        Assert.Equal(AutoCompleteModes.AutoSuggest, technologiesAutoComplete.GetAutoComplete(technologies));
+        Assert.Equal(new[] { "sqlite", "winforms" }, SuggestedList(tagsAutoComplete));
+        Assert.Equal(new[] { "C#" }, SuggestedList(technologiesAutoComplete));
+    }
+
+    private static IReadOnlyList<string> SuggestedList(AutoComplete autoComplete) =>
+        ((IEnumerable<string>)autoComplete.DataSource!).ToArray();
+
+    [Fact]
     public void MetadataInputsShareTheSameHeight()
     {
         using var editor = new ctlAddEdit(
@@ -473,6 +568,30 @@ public sealed class EditorStepsVisibilityTests
         .GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
         .GetValue(instance)!;
 
+    /// <summary>
+    /// Reads a private field that is not a control (e.g. the AutoComplete
+    /// components, which are <see cref="System.ComponentModel.Component"/>s).
+    /// </summary>
+    private static T PrivateField<T>(object instance, string name) => (T)instance
+        .GetType()
+        .GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+        .GetValue(instance)!;
+
+    /// <summary>
+    /// An entry that satisfies every EntryValidator rule, so a save attempt
+    /// only reports the field each test deliberately breaks.
+    /// </summary>
+    private static KnowledgeEntry CompleteEntry(int id) => new()
+    {
+        Id = id,
+        Title = "Complete entry",
+        ProjectName = "KnowledgeTracker",
+        Technologies = "C#; WinForms",
+        DateResolved = new DateTime(2026, 10, 1),
+        Tags = "sqlite, validation",
+        Description = "A documented solution.",
+    };
+
     private static IEnumerable<Control> Descendants(Control root)
     {
         foreach (Control child in root.Controls)
@@ -487,6 +606,10 @@ public sealed class EditorStepsVisibilityTests
 
     private sealed class FakeEntryService : IKnowledgeEntryService
     {
+        public IReadOnlyList<string> Tags { get; set; } = Array.Empty<string>();
+
+        public IReadOnlyList<string> Technologies { get; set; } = Array.Empty<string>();
+
         public Task<IReadOnlyList<KnowledgeEntry>> GetAllAsync() =>
             Task.FromResult<IReadOnlyList<KnowledgeEntry>>(Array.Empty<KnowledgeEntry>());
 
@@ -497,6 +620,10 @@ public sealed class EditorStepsVisibilityTests
         public Task DeleteAsync(int id) => Task.CompletedTask;
 
         public Task ToggleFavoriteAsync(KnowledgeEntry entry) => Task.CompletedTask;
+
+        public Task<IReadOnlyList<string>> GetAllTagsAsync() => Task.FromResult(Tags);
+
+        public Task<IReadOnlyList<string>> GetAllTechnologiesAsync() => Task.FromResult(Technologies);
     }
 
     private sealed class FakeNavigation : INavigationService

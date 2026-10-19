@@ -26,9 +26,12 @@ namespace KnowledgeTrackerDesktop.Services
         {
             ArgumentNullException.ThrowIfNull(entry);
 
-            if (string.IsNullOrWhiteSpace(entry.Title))
+            var errors = EntryValidator.Validate(entry);
+            if (errors.Count > 0)
             {
-                throw new ArgumentException("A title is required.", nameof(entry));
+                throw new ArgumentException(
+                    string.Join(Environment.NewLine, errors.Select(error => error.Message)),
+                    nameof(entry));
             }
 
             await _repository.SaveAsync(entry);
@@ -53,5 +56,11 @@ namespace KnowledgeTrackerDesktop.Services
             await _repository.SetFavoriteAsync(entry.Id, newValue);
             entry.IsFavorite = newValue;
         }
+
+        public Task<IReadOnlyList<string>> GetAllTagsAsync() =>
+            _repository.GetAllTagsAsync();
+
+        public Task<IReadOnlyList<string>> GetAllTechnologiesAsync() =>
+            _repository.GetAllTechnologiesAsync();
     }
 }

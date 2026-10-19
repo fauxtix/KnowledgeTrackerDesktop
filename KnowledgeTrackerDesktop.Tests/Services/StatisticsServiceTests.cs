@@ -177,8 +177,10 @@ namespace KnowledgeTrackerDesktop.Tests.Services
                     Title = "a",
                     IsFavorite = true,
                     ProjectName = "AppTracker",
+                    Technologies = "SQLite",
                     Tags = "sqlite;winforms",
                     DateResolved = new DateTime(2026, 10, 8),
+                    Description = "Aggregated for statistics.",
                 };
                 await new KnowledgeEntryService(new KnowledgeRepositorySQLite(connection))
                     .SaveAsync(entry);

@@ -14,6 +14,8 @@ namespace KnowledgeTrackerDesktop.Services
 
         /// <summary>
         /// Persists the entry together with its Steps and Attachments.
+        /// Throws <see cref="ArgumentException"/> when the entry does not
+        /// satisfy <see cref="EntryValidator"/>.
         /// </summary>
         Task SaveAsync(KnowledgeEntry entry);
 
@@ -27,5 +29,15 @@ namespace KnowledgeTrackerDesktop.Services
         /// On failure the in-memory entry is left unchanged.
         /// </summary>
         Task ToggleFavoriteAsync(KnowledgeEntry entry);
+
+        /// <summary>
+        /// Distinct tags across entries, most used first (editor suggestions).
+        /// </summary>
+        Task<IReadOnlyList<string>> GetAllTagsAsync();
+
+        /// <summary>
+        /// Distinct technologies across entries, most used first.
+        /// </summary>
+        Task<IReadOnlyList<string>> GetAllTechnologiesAsync();
     }
 }

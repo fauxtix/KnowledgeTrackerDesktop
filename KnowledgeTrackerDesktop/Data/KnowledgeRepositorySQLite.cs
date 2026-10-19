@@ -142,6 +142,54 @@ namespace KnowledgeTrackerDesktop.Data
             }
         }
 
+        public Task<IReadOnlyList<string>> GetAllTagsAsync() =>
+            GetDistinctListValuesAsync("Tags");
+
+        public Task<IReadOnlyList<string>> GetAllTechnologiesAsync() =>
+            GetDistinctListValuesAsync("Technologies");
+
+        /// <summary>
+        /// Reads one list-valued column (Tags / Technologies) across all
+        /// entries and returns its distinct items ordered by usage frequency
+        /// (most used first, then alphabetically), preserving the first seen
+        /// spelling. The column is split with <see cref="KnowledgeEntryTags"/>
+        /// so both accepted separators are handled.
+        /// </summary>
+        private async Task<IReadOnlyList<string>> GetDistinctListValuesAsync(string column)
+        {
+            var rows = await _connection.QueryAsync<ListValueRow>(
+                $"SELECT \"{column}\" AS \"Value\" FROM \"KnowledgeEntry\"");
+
+            var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var spellings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var row in rows)
+            {
+                foreach (var item in KnowledgeEntryTags.Split(row.Value))
+                {
+                    counts[item] = counts.TryGetValue(item, out var count) ? count + 1 : 1;
+                    if (!spellings.ContainsKey(item))
+                    {
+                        spellings[item] = item;
+                    }
+                }
+            }
+
+            return counts
+                .OrderByDescending(pair => pair.Value)
+                .ThenBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
+                .Select(pair => spellings[pair.Key])
+                .ToList();
+        }
+
+        /// <summary>
+        /// Single-column projection row (sqlite-net requires a mapped type;
+        /// the queried column is aliased to <c>Value</c>).
+        /// </summary>
+        private sealed class ListValueRow
+        {
+            public string? Value { get; set; }
+        }
+
         private static void UpsertEntry(SQLiteConnection conn, KnowledgeEntry entry)
         {
             if (entry.Id == 0)

@@ -289,6 +289,12 @@ namespace KnowledgeTrackerDesktop.Tests.UI
             public Task DeleteAsync(int id) => Task.CompletedTask;
 
             public Task ToggleFavoriteAsync(KnowledgeEntry entry) => Task.CompletedTask;
+
+            public Task<IReadOnlyList<string>> GetAllTagsAsync() =>
+                Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+
+            public Task<IReadOnlyList<string>> GetAllTechnologiesAsync() =>
+                Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
         }
 
         private sealed class FakeNavigation : INavigationService

@@ -98,6 +98,22 @@ namespace KnowledgeTrackerDesktop.UI
             ["The file could not be opened."] = "Não foi possível abrir o ficheiro.",
             ["The link could not be opened."] = "Não foi possível abrir a ligação.",
             ["A title is required."] = "É necessário indicar um título.",
+            ["A project name is required."] = "É necessário indicar um nome de projeto.",
+            ["At least one technology is required."] = "É necessário indicar pelo menos uma tecnologia.",
+            ["Technologies must be a comma or semicolon separated list without empty items."] =
+                "As tecnologias devem ser uma lista separada por vírgulas ou ponto e vírgula, sem itens vazios.",
+            ["Technologies cannot contain duplicate items."] =
+                "As tecnologias não podem conter itens duplicados.",
+            ["A resolution date is required."] = "É necessário indicar uma data de resolução.",
+            ["The resolution date cannot be in the future."] =
+                "A data de resolução não pode ser uma data futura.",
+            ["At least one tag is required."] = "É necessário indicar pelo menos uma etiqueta.",
+            ["Tags must be a comma or semicolon separated list without empty items."] =
+                "As etiquetas devem ser uma lista separada por vírgulas ou ponto e vírgula, sem itens vazios.",
+            ["Tags cannot contain duplicate items."] = "As etiquetas não podem conter itens duplicados.",
+            ["A description is required."] = "É necessário indicar uma descrição.",
+            ["The YouTube URL must be a valid http(s) link."] =
+                "O URL do YouTube tem de ser uma ligação http(s) válida.",
             ["The knowledge entry could not be saved. Please try again."] =
                 "Não foi possível guardar a entrada. Tente novamente.",
             ["Discard unsaved changes?"] = "Descartar as alterações não guardadas?",

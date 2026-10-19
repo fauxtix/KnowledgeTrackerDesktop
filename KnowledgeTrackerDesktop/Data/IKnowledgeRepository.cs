@@ -27,5 +27,16 @@ namespace KnowledgeTrackerDesktop.Data
         /// Updates only the IsFavorite flag without touching child collections.
         /// </summary>
         Task SetFavoriteAsync(int id, bool isFavorite);
+
+        /// <summary>
+        /// Distinct tags across entries, most used first. Used by the editor
+        /// to suggest values already present in the library.
+        /// </summary>
+        Task<IReadOnlyList<string>> GetAllTagsAsync();
+
+        /// <summary>
+        /// Distinct technologies across entries, most used first.
+        /// </summary>
+        Task<IReadOnlyList<string>> GetAllTechnologiesAsync();
     }
 }

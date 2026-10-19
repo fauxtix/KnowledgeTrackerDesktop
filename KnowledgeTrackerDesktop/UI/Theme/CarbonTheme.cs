@@ -114,7 +114,14 @@ namespace KnowledgeTrackerDesktop.UI.Theme
                     }
                     break;
                 case SfDateTimeEdit dateTimeEdit:
+                    // The embedded CarbonDark XML theme supplies the dark
+                    // palette (including the dropdown), but the date editor
+                    // must also render on the same font as the text inputs
+                    // and stay correct even if the skin lookup fails.
                     dateTimeEdit.ThemeName = CarbonPalette.ThemeName;
+                    dateTimeEdit.BackColor = CarbonPalette.DeepBackground;
+                    dateTimeEdit.ForeColor = CarbonPalette.TextPrimary;
+                    dateTimeEdit.Font = AppTheme.Fonts.Input;
                     break;
                 case SfNumericTextBox numericTextBox:
                     numericTextBox.ThemeName = CarbonPalette.ThemeName;
