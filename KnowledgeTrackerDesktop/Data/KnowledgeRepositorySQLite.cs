@@ -148,6 +148,61 @@ namespace KnowledgeTrackerDesktop.Data
         public Task<IReadOnlyList<string>> GetAllTechnologiesAsync() =>
             GetDistinctListValuesAsync("Technologies");
 
+        public async Task<IReadOnlyList<EntryIdentity>> GetIdentitiesAsync()
+        {
+            var rows = await _connection.QueryAsync<IdentityRow>(
+                "SELECT \"Title\" AS \"Title\", \"ProjectName\" AS \"ProjectName\" FROM \"KnowledgeEntry\"");
+
+            return rows
+                .Select(row => EntryIdentity.Of(row.Title, row.ProjectName))
+                .ToList();
+        }
+
+        public async Task InsertBatchAsync(IReadOnlyList<KnowledgeEntry> entries)
+        {
+            ArgumentNullException.ThrowIfNull(entries);
+
+            if (entries.Count == 0)
+            {
+                return;
+            }
+
+            await _connection.RunInTransactionAsync(conn =>
+            {
+                foreach (var entry in entries)
+                {
+                    // An import always creates new rows; ids from the document
+                    // are not restored, so a local entry is never overwritten.
+                    entry.Id = 0;
+                    foreach (var step in entry.Steps ?? new List<Step>())
+                    {
+                        step.Id = 0;
+                    }
+
+                    foreach (var attachment in entry.Attachments ?? new List<AttachmentInfo>())
+                    {
+                        attachment.Id = 0;
+                    }
+
+                    UpsertEntry(conn, entry);
+
+                    var order = 0;
+                    foreach (var step in entry.Steps ?? new List<Step>())
+                    {
+                        step.KnowledgeEntryId = entry.Id;
+                        step.Order = ++order;
+                        conn.Insert(step);
+                    }
+
+                    foreach (var attachment in entry.Attachments ?? new List<AttachmentInfo>())
+                    {
+                        attachment.KnowledgeEntryId = entry.Id;
+                        conn.Insert(attachment);
+                    }
+                }
+            });
+        }
+
         /// <summary>
         /// Reads one list-valued column (Tags / Technologies) across all
         /// entries and returns its distinct items ordered by usage frequency
@@ -188,6 +243,16 @@ namespace KnowledgeTrackerDesktop.Data
         private sealed class ListValueRow
         {
             public string? Value { get; set; }
+        }
+
+        /// <summary>
+        /// Two-column projection row for the title/project identity query.
+        /// </summary>
+        private sealed class IdentityRow
+        {
+            public string? Title { get; set; }
+
+            public string? ProjectName { get; set; }
         }
 
         private static void UpsertEntry(SQLiteConnection conn, KnowledgeEntry entry)

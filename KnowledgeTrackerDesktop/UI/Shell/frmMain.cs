@@ -4,6 +4,7 @@ using KnowledgeTrackerDesktop.Core;
 using KnowledgeTrackerDesktop.UI.Navigation;
 using KnowledgeTrackerDesktop.UI.Theme;
 using KnowledgeTrackerDesktop.UI.Views;
+using KnowledgeTrackerDesktop.UI;
 using Syncfusion.WinForms.Controls;
 
 namespace KnowledgeTrackerDesktop.UI.Shell
@@ -319,6 +320,17 @@ namespace KnowledgeTrackerDesktop.UI.Shell
             _navItems.Controls.Add(_libraryNavButton);
             _navItems.Controls.Add(_statisticsNavButton);
 
+            // Add Help button with F1 shortcut hint
+            var helpButton = BuildNavButton("Help", () => OpenHelpDialog());
+            AppLocalization.Bind(helpButton, "Help");
+            helpButton.Text = AppLocalization.Translate("Help") + " (F1)";
+            AppLocalization.LanguageChanged += (_, _) => 
+            {
+                if (!helpButton.IsDisposed)
+                    helpButton.Text = AppLocalization.Translate("Help") + " (F1)";
+            };
+            _navItems.Controls.Add(helpButton);
+
             return navigation;
         }
 
@@ -442,10 +454,38 @@ namespace KnowledgeTrackerDesktop.UI.Shell
             }
         }
 
+        private void OpenHelpDialog()
+        {
+            try
+            {
+                using var helpForm = new HelpForm();
+                helpForm.ShowDialog(this);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(ex);
+                MessageBox.Show(
+                    "Não foi possível abrir a ajuda.",
+                    "Knowledge Tracker",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+        }
+
         private void OnLanguageChanged(object? sender, EventArgs e)
         {
             AppLocalization.Apply(this);
             ApplyLanguageOptionStyles();
+        }
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == Keys.F1)
+            {
+                OpenHelpDialog();
+                return true;
+            }
+            return base.ProcessCmdKey(ref msg, keyData);
         }
 
         private void ApplyLanguageOptionStyles()

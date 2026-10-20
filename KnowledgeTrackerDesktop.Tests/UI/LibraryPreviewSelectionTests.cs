@@ -200,6 +200,71 @@ namespace KnowledgeTrackerDesktop.Tests.UI
             Assert.True(split.Panel2.Width >= split.Panel2MinSize - 2);
         }
 
+        [Fact]
+        public async Task ClickingACardSelectsItAndShowsItInThePreview()
+        {
+            var navigation = new FakeNavigation();
+            using var view = CreateView(
+                navigation,
+                Entry(1, "Alpha entry"),
+                Entry(2, "Beta entry"));
+            await view.OnAppearingAsync();
+
+            var second = Cards(view).Single(card => card.Entry.Id == 2);
+            InvokeMouseDown(second, MouseButtons.Left);
+
+            Assert.Equal(2, SelectedId(view));
+            Assert.True(second.IsSelected);
+            Assert.Equal(2, Preview(view).CurrentEntry!.Id);
+
+            // Selection is a preview concern: clicking never navigates.
+            Assert.Empty(navigation.Calls);
+        }
+
+        [Fact]
+        public async Task SelectingAnotherCardClearsThePreviousHighlight()
+        {
+            var navigation = new FakeNavigation();
+            using var view = CreateView(
+                navigation,
+                Entry(1, "Alpha entry"),
+                Entry(2, "Beta entry"));
+            await view.OnAppearingAsync();
+
+            var first = Cards(view).Single(card => card.Entry.Id == 1);
+            var second = Cards(view).Single(card => card.Entry.Id == 2);
+
+            InvokeMouseDown(first, MouseButtons.Left);
+            Assert.True(first.IsSelected);
+
+            InvokeMouseDown(second, MouseButtons.Left);
+            Assert.False(first.IsSelected);
+            Assert.True(second.IsSelected);
+        }
+
+        [Fact]
+        public async Task TheCardDuplicateActionOpensTheEditorOnACopyWithoutPersisting()
+        {
+            var navigation = new FakeNavigation();
+            using var view = CreateView(navigation, Entry(1, "Alpha entry"));
+            await view.OnAppearingAsync();
+
+            var card = Assert.Single(Cards(view));
+            var duplicate = Descendants(card)
+                .OfType<Label>()
+                .Single(label =>
+                    Equals(label.AccessibleName, AppLocalization.Translate("Duplicate")));
+
+            InvokeClick(duplicate);
+            await Task.Yield();
+
+            var call = Assert.Single(navigation.Calls);
+            var request = Assert.IsType<EntryEditorRequest>(Assert.Single(call.Args));
+            // A copy carries no id, so saving creates a new entry.
+            Assert.Equal(0, request.Entry.Id);
+            Assert.Equal("Alpha entry", request.Entry.Title);
+        }
+
         private static ctlMain CreateView(FakeNavigation navigation, params KnowledgeEntry[] entries) =>
             new(
                 new FakeEntryService(entries),
@@ -244,6 +309,14 @@ namespace KnowledgeTrackerDesktop.Tests.UI
                 "OnMouseDown",
                 BindingFlags.Instance | BindingFlags.NonPublic)!;
             method.Invoke(control, new object[] { new MouseEventArgs(button, clicks, 2, 2, 0) });
+        }
+
+        private static void InvokeClick(Control control)
+        {
+            var method = typeof(Control).GetMethod(
+                "OnClick",
+                BindingFlags.Instance | BindingFlags.NonPublic)!;
+            method.Invoke(control, new object[] { EventArgs.Empty });
         }
 
         private static bool IsInside(Control ancestor, Control control)
@@ -295,6 +368,15 @@ namespace KnowledgeTrackerDesktop.Tests.UI
 
             public Task<IReadOnlyList<string>> GetAllTechnologiesAsync() =>
                 Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+
+            public Task<KnowledgeExport> ExportAsync() =>
+                Task.FromResult(new KnowledgeExport());
+
+            public Task<ImportResult> ImportAsync(KnowledgeExport document, ImportMode mode) =>
+                Task.FromResult(new ImportResult(0, 0, 0));
+
+            public Task<int> CountDuplicatesAsync(KnowledgeExport document) =>
+                Task.FromResult(0);
         }
 
         private sealed class FakeNavigation : INavigationService

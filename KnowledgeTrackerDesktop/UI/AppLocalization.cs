@@ -166,6 +166,7 @@ namespace KnowledgeTrackerDesktop.UI
             ["Add favorite"] = "Adicionar aos favoritos",
             ["Open/Edit"] = "Abrir/Editar",
             ["Toggle favorite"] = "Alternar favorito",
+            ["Duplicate"] = "Duplicar",
             ["Delete"] = "Eliminar",
             ["1 entry"] = "1 entrada",
             ["{0} entries"] = "{0} entradas",
@@ -174,6 +175,32 @@ namespace KnowledgeTrackerDesktop.UI
             ["{0} step"] = "{0} passo",
             ["{0} file"] = "{0} ficheiro",
             ["{0} files"] = "{0} ficheiros",
+            ["Export"] = "Exportar",
+            ["Import"] = "Importar",
+            ["Import library"] = "Importar biblioteca",
+            ["Export the knowledge library"] = "Exportar a biblioteca de conhecimento",
+            ["JSON files (*.json)|*.json"] = "Ficheiros JSON (*.json)|*.json",
+            ["KnowledgeTracker export"] = "Exportação do KnowledgeTracker",
+            ["Imported {0} of {1} entries."] = "Importadas {0} de {1} entradas.",
+            ["Import summary"] = "Resumo da importação",
+            ["{0} entries already existed and were skipped."] =
+                "{0} entradas já existiam e foram ignoradas.",
+            ["{0} entries were skipped because they are incomplete."] =
+                "{0} entradas foram ignoradas por estarem incompletas.",
+            ["Import the library"] = "Importar a biblioteca",
+            ["The library was exported to:\r\n\r\n{0}"] =
+                "A biblioteca foi exportada para:\r\n\r\n{0}",
+            ["The library could not be exported. Please try again."] =
+                "Não foi possível exportar a biblioteca. Tente novamente.",
+            ["{0} entries already exist in your library.\r\n\r\nImport the remaining ones and keep the existing entries?"] =
+                "{0} entradas já existem na sua biblioteca.\r\n\r\nImportar as restantes e manter as entradas existentes?",
+            ["Keep existing entries"] = "Manter entradas existentes",
+            ["Import as copies"] = "Importar como cópias",
+            ["The file could not be imported. Check that it is a KnowledgeTracker export and try again."] =
+                "Não foi possível importar o ficheiro. Verifique se é uma exportação do KnowledgeTracker e tente novamente.",
+            ["The file was created by a newer version of KnowledgeTracker. Update the application and try again."] =
+                "O ficheiro foi criado por uma versão mais recente do KnowledgeTracker. Atualize a aplicação e tente novamente.",
+            ["No entries to import."] = "Sem entradas para importar.",
         };
 
         private static readonly Dictionary<string, string> EnglishText = PortugueseText

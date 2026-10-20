@@ -1,0 +1,317 @@
+using System.Diagnostics;
+using System.Net;
+using KnowledgeTrackerDesktop.Core;
+using KnowledgeTrackerDesktop.UI.Theme;
+using Markdig;
+using Microsoft.Web.WebView2.WinForms;
+using Syncfusion.WinForms.Controls;
+
+namespace KnowledgeTrackerDesktop.UI
+{
+    public partial class HelpForm : SfForm
+    {
+        private readonly WebView2 _webView;
+        private readonly Panel _footerPanel;
+        private readonly SfButton _closeButton;
+        private bool _webViewInitialized;
+
+        public HelpForm()
+        {
+            Text = GetTitle();
+            StartPosition = FormStartPosition.CenterParent;
+            FormBorderStyle = FormBorderStyle.Sizable;
+            MinimumSize = new Size(600, 400);
+            Size = new Size(900, 700);
+            ShowInTaskbar = false;
+            KeyPreview = true;
+            AutoScaleMode = AutoScaleMode.Font;
+            BackColor = CarbonPalette.DeepBackground;
+
+            _webView = new WebView2
+            {
+                Dock = DockStyle.Fill
+            };
+
+            _footerPanel = new Panel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 56,
+                Padding = new Padding(16, 8, 16, 8),
+                BackColor = CarbonPalette.Surface
+            };
+
+            _closeButton = new SfButton
+            {
+                Text = GetCloseText(),
+                AutoSize = false,
+                Size = new Size(120, 36),
+                Anchor = AnchorStyles.Right
+            };
+            _closeButton.Click += (_, _) => Close();
+            ButtonStyler.Apply(_closeButton, ButtonRole.Secondary);
+
+            _footerPanel.Controls.Add(_closeButton);
+            _closeButton.Left = _footerPanel.Width - _closeButton.Width - 16;
+            _footerPanel.Resize += (_, _) =>
+            {
+                if (!_closeButton.IsDisposed)
+                    _closeButton.Left = _footerPanel.Width - _closeButton.Width - 16;
+            };
+
+            Controls.Add(_webView);
+            Controls.Add(_footerPanel);
+
+            Load += HelpForm_Load;
+            FormClosing += HelpForm_FormClosing;
+            KeyDown += HelpForm_KeyDown;
+            AppLocalization.LanguageChanged += OnLanguageChanged;
+        }
+
+        private static string GetTitle()
+        {
+            return AppLocalization.Language == AppLanguage.Portuguese
+                ? "Ajuda - Knowledge Tracker"
+                : "Help - Knowledge Tracker";
+        }
+
+        private static string GetCloseText()
+        {
+            return AppLocalization.Language == AppLanguage.Portuguese ? "Fechar" : "Close";
+        }
+
+        private void OnLanguageChanged(object? sender, EventArgs e)
+        {
+            try
+            {
+                Text = GetTitle();
+                if (!_closeButton.IsDisposed)
+                {
+                    _closeButton.Text = GetCloseText();
+                    ButtonStyler.Reapply(_closeButton);
+                }
+                _ = ReloadHelpAsync();
+            }
+            catch { }
+        }
+
+        private async Task ReloadHelpAsync()
+        {
+            try
+            {
+                if (_webView.CoreWebView2 == null)
+                    return;
+                string markdown = string.Empty;
+                string? helpPath = FindHelpFile();
+
+                if (!string.IsNullOrEmpty(helpPath) && File.Exists(helpPath))
+                {
+                    markdown = await File.ReadAllTextAsync(helpPath);
+                    System.Diagnostics.Debug.WriteLine($"[HelpForm] Loaded help from: {helpPath} (Lang={AppLocalization.Language})");
+                }
+                else
+                {
+                    var candidates = GetCandidatePathsForLanguage(AppLocalization.Language).Union(GetCandidatePaths()).Distinct(StringComparer.OrdinalIgnoreCase);
+                    var notFoundTitle = AppLocalization.Language == AppLanguage.Portuguese ? "# Ajuda" : "# Help";
+                    var notFoundMsg = AppLocalization.Language == AppLanguage.Portuguese
+                        ? "\n\nO ficheiro de ajuda não foi encontrado.\n\nProcurei em:\n\n"
+                        : "\n\nHelp file not found.\n\nSearched in:\n\n";
+                    markdown = notFoundTitle + notFoundMsg +
+                               string.Join("\n", candidates.Select(p => "- `" + p + "`"));
+                    System.Diagnostics.Debug.WriteLine($"[HelpForm] Help not found. Lang={AppLocalization.Language}");
+                }
+
+                var htmlBody = Markdown.ToHtml(markdown ?? string.Empty);
+                var html = BuildHtml(htmlBody);
+                _webView.CoreWebView2.NavigateToString(html);
+            }
+            catch { }
+        }
+
+        private async void HelpForm_Load(object? sender, EventArgs e)
+        {
+            try
+            {
+                CarbonTheme.Initialize();
+                CarbonTheme.Apply(this);
+                if (_footerPanel != null)
+                {
+                    _footerPanel.BackColor = CarbonPalette.Surface;
+                }
+                if (!_closeButton.IsDisposed)
+                {
+                    ButtonStyler.Apply(_closeButton, ButtonRole.Secondary);
+                }
+            }
+            catch { }
+
+            try
+            {
+                await _webView.EnsureCoreWebView2Async(null);
+                _webViewInitialized = true;
+                await ReloadHelpAsync();
+                if (_webView.CoreWebView2 != null)
+                {
+                    _webView.CoreWebView2.NewWindowRequested -= CoreWebView2_NewWindowRequested;
+                    _webView.CoreWebView2.NewWindowRequested += CoreWebView2_NewWindowRequested;
+                }
+            }
+            catch (Exception ex)
+            {
+                var errorTitle = AppLocalization.Language == AppLanguage.Portuguese ? "<h1>Erro ao carregar ajuda</h1>" : "<h1>Error loading help</h1>";
+                var errorHtml = BuildHtml(errorTitle + "<p>" + WebUtility.HtmlEncode(ex.Message) + "</p>");
+                try
+                {
+                    if (_webView.CoreWebView2 != null)
+                        _webView.CoreWebView2.NavigateToString(errorHtml);
+                    else
+                        _webView.NavigateToString(errorHtml);
+                }
+                catch { }
+            }
+        }
+
+        private static string? FindHelpFile()
+        {
+            var lang = AppLocalization.Language;
+            foreach (var path in GetCandidatePathsForLanguage(lang))
+            {
+                if (File.Exists(path)) return path;
+            }
+            foreach (var path in GetCandidatePaths())
+            {
+                if (File.Exists(path)) return path;
+            }
+            return null;
+        }
+
+        private static IEnumerable<string> GetCandidatePathsForLanguage(AppLanguage lang)
+        {
+            var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            var exeDir = Path.GetDirectoryName(Application.ExecutablePath) ?? baseDir;
+            var currentDir = Directory.GetCurrentDirectory();
+            var candidates = new List<string>();
+
+            if (lang == AppLanguage.Portuguese)
+            {
+                candidates.Add(Path.Combine(baseDir, "docs", "Help.pt-PT.md"));
+                candidates.Add(Path.Combine(exeDir, "docs", "Help.pt-PT.md"));
+                candidates.Add(Path.Combine(currentDir, "docs", "Help.pt-PT.md"));
+                candidates.Add(Path.Combine(baseDir, "docs", "Help.pt.md"));
+                candidates.Add(Path.Combine(exeDir, "docs", "Help.pt.md"));
+                candidates.Add(Path.Combine(currentDir, "docs", "Help.pt.md"));
+            }
+            else
+            {
+                candidates.Add(Path.Combine(baseDir, "docs", "Help.en.md"));
+                candidates.Add(Path.Combine(exeDir, "docs", "Help.en.md"));
+                candidates.Add(Path.Combine(currentDir, "docs", "Help.en.md"));
+            }
+
+            candidates.AddRange(GetCandidatePaths());
+            return candidates.Distinct(StringComparer.OrdinalIgnoreCase);
+        }
+
+        private static IEnumerable<string> GetCandidatePaths()
+        {
+            var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            var exeDir = Path.GetDirectoryName(Application.ExecutablePath) ?? baseDir;
+            var currentDir = Directory.GetCurrentDirectory();
+
+            var candidates = new List<string>
+            {
+                Path.Combine(baseDir, "docs", "Help.md"),
+                Path.Combine(exeDir, "docs", "Help.md"),
+                Path.Combine(currentDir, "docs", "Help.md"),
+                Path.Combine(baseDir, "Help.md"),
+                Path.Combine(exeDir, "Help.md")
+            };
+
+            try
+            {
+                var assemblyLocation = typeof(HelpForm).Assembly.Location;
+                var asmDir = Path.GetDirectoryName(assemblyLocation);
+                if (!string.IsNullOrEmpty(asmDir))
+                {
+                    candidates.Add(Path.Combine(asmDir, "docs", "Help.md"));
+                    var parent = Directory.GetParent(asmDir);
+                    int depth = 0;
+                    while (parent != null && parent.FullName.Length > 3 && depth < 6)
+                    {
+                        candidates.Add(Path.Combine(parent.FullName, "docs", "Help.md"));
+                        candidates.Add(Path.Combine(parent.FullName, "KnowledgeTrackerDesktop", "docs", "Help.md"));
+                        parent = parent.Parent;
+                        depth++;
+                    }
+                }
+            }
+            catch { }
+
+            return candidates.Distinct(StringComparer.OrdinalIgnoreCase);
+        }
+
+        private void CoreWebView2_NewWindowRequested(object? sender, Microsoft.Web.WebView2.Core.CoreWebView2NewWindowRequestedEventArgs e)
+        {
+            e.Handled = true;
+            if (Uri.TryCreate(e.Uri, UriKind.Absolute, out var uri))
+            {
+                try { Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true }); }
+                catch { }
+            }
+        }
+
+        private void HelpForm_KeyDown(object? sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Escape)
+            {
+                Close();
+                e.Handled = true;
+            }
+        }
+
+        private void HelpForm_FormClosing(object? sender, FormClosingEventArgs e)
+        {
+            try { AppLocalization.LanguageChanged -= OnLanguageChanged; } catch { }
+            try
+            {
+                if (_webViewInitialized && _webView.CoreWebView2 != null)
+                    _webView.CoreWebView2.NewWindowRequested -= CoreWebView2_NewWindowRequested;
+            }
+            catch { }
+        }
+
+        private static string BuildHtml(string body)
+        {
+            return $@"<!DOCTYPE html>
+<html lang=""pt"">
+<head>
+    <meta charset=""utf-8"" />
+    <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"" />
+    <title>Ajuda - Knowledge Tracker</title>
+    <style>
+        body {{ font-family: Segoe UI, system-ui, -apple-system, sans-serif; line-height: 1.7; padding: 24px 32px; margin: 0; background-color: #121824; color: #F8FAFC; max-width: 980px; }}
+        h1, h2, h3, h4, h5, h6 {{ font-weight: 600; line-height: 1.3; margin-top: 28px; margin-bottom: 16px; color: #F8FAFC; }}
+        h1 {{ font-size: 28px; border-bottom: 1px solid #2E375E; padding-bottom: 8px; }}
+        h2 {{ font-size: 22px; border-bottom: 1px solid #2E375E; padding-bottom: 6px; }}
+        h3 {{ font-size: 18px; }}
+        p {{ margin: 12px 0; color: #F8FAFC; }}
+        ul, ol {{ margin: 12px 0; padding-left: 28px; color: #F8FAFC; }}
+        li {{ margin: 6px 0; }}
+        code {{ font-family: Consolas, Courier New, monospace; background-color: #1E2640; padding: 2px 6px; border-radius: 4px; font-size: 0.95em; color: #F8FAFC; }}
+        pre {{ background-color: #1E2640; padding: 16px; border-radius: 6px; overflow-x: auto; border: 1px solid #2E375E; }}
+        pre code {{ background-color: transparent; padding: 0; }}
+        a {{ color: #7C3AED; text-decoration: none; }}
+        a:hover {{ text-decoration: underline; }}
+        blockquote {{ border-left: 4px solid #7C3AED; padding-left: 16px; margin: 16px 0; color: #94A3B8; }}
+        hr {{ border: none; border-top: 1px solid #2E375E; margin: 32px 0; }}
+        table {{ border-collapse: collapse; width: 100%; margin: 16px 0; }}
+        th, td {{ border: 1px solid #2E375E; padding: 8px 12px; text-align: left; color: #F8FAFC; }}
+        th {{ background-color: #1E2640; font-weight: 600; }}
+    </style>
+</head>
+<body>
+{body}
+</body>
+</html>";
+        }
+    }
+}

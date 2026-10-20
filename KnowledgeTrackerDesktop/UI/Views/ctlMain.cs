@@ -104,11 +104,32 @@ namespace KnowledgeTrackerDesktop.UI.Views
             addButton.Click += (_, _) => OpenNewEntry();
             ButtonStyler.Apply(addButton, ButtonRole.Primary);
 
+            var importButton = CreateHeaderButton("Import", ImportLibrary);
+            var exportButton = CreateHeaderButton("Export", ExportLibrary);
+
             _shell.SetPageTitle("Library");
-            _shell.SetHeaderActions(addButton);
+            _shell.SetHeaderActions(exportButton, importButton, addButton);
             UpdateFavoritesVisual();
 
             await LoadAsync();
+        }
+
+        /// <summary>
+        /// Header action in the secondary role: same shape as the primary
+        /// action so the header row stays aligned.
+        /// </summary>
+        private static SfButton CreateHeaderButton(string caption, System.Action onClick)
+        {
+            var button = new SfButton
+            {
+                AutoSize = false,
+                Size = new Size(110, 32),
+                Margin = new Padding(0, 0, 8, 0),
+            };
+            AppLocalization.Bind(button, caption);
+            button.Click += (_, _) => onClick();
+            ButtonStyler.Apply(button, ButtonRole.Secondary);
+            return button;
         }
 
         protected override void Dispose(bool disposing)
@@ -139,6 +160,184 @@ namespace KnowledgeTrackerDesktop.UI.Views
         private void OpenNewEntry() =>
             _navigation.NavigateTo<ctlAddEdit>(
                 new EntryEditorRequest(new KnowledgeEntry()));
+
+        /// <summary>
+        /// Saves the whole knowledge base as a JSON export. Read-only: it builds
+        /// the document from the service and only writes the file the user picks.
+        /// </summary>
+        private async void ExportLibrary()
+        {
+            try
+            {
+                var document = await _service.ExportAsync();
+
+                using var dialog = new SaveFileDialog
+                {
+                    Title = AppLocalization.Translate("Export the knowledge library"),
+                    Filter = AppLocalization.Translate("JSON files (*.json)|*.json"),
+                    FileName = ExportLibraryFileName(),
+                    DefaultExt = "json",
+                    AddExtension = true,
+                };
+
+                if (dialog.ShowDialog(this) != DialogResult.OK)
+                {
+                    return;
+                }
+
+                File.WriteAllText(dialog.FileName, document.ToJson());
+                ShowInformation(
+                    "KnowledgeTracker",
+                    string.Format(
+                        AppLocalization.Culture,
+                        AppLocalization.Translate("The library was exported to:\r\n\r\n{0}"),
+                        dialog.FileName));
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+                ShowWarning(
+                    "KnowledgeTracker",
+                    AppLocalization.Translate("The library could not be exported. Please try again."));
+            }
+        }
+
+        /// <summary>
+        /// Reads a JSON export and writes its entries through the service. When
+        /// the file contains entries that already exist locally the user is
+        /// asked once, for the whole batch, whether to keep the existing ones or
+        /// to import the file as extra copies.
+        /// </summary>
+        private async void ImportLibrary()
+        {
+            try
+            {
+                using var dialog = new OpenFileDialog
+                {
+                    Title = AppLocalization.Translate("Import the library"),
+                    Filter = AppLocalization.Translate("JSON files (*.json)|*.json"),
+                    CheckFileExists = true,
+                    Multiselect = false,
+                };
+
+                if (dialog.ShowDialog(this) != DialogResult.OK)
+                {
+                    return;
+                }
+
+                var json = File.ReadAllText(dialog.FileName);
+                var document = KnowledgeExport.FromJson(json);
+
+                if (document.Entries.Count == 0)
+                {
+                    ShowInformation(
+                        "KnowledgeTracker",
+                        AppLocalization.Translate("No entries to import."));
+                    return;
+                }
+
+                // Only ask about duplicates when there really are some.
+                var duplicates = await _service.CountDuplicatesAsync(document);
+                var mode = duplicates > 0 ? ChooseImportMode(duplicates) : ImportMode.SkipDuplicates;
+                if (mode is null)
+                {
+                    return;
+                }
+
+                var result = await _service.ImportAsync(document, mode.Value);
+
+                await LoadAsync();
+                ShowInformation(
+                    "KnowledgeTracker",
+                    ImportSummary(result));
+            }
+            catch (KnowledgeExportFormatException ex)
+            {
+                Debug.WriteLine(ex);
+                ShowWarning(
+                    "KnowledgeTracker",
+                    AppLocalization.Translate(ex.IsNewerFormat
+                        ? "The file was created by a newer version of KnowledgeTracker. Update the application and try again."
+                        : "The file could not be imported. Check that it is a KnowledgeTracker export and try again."));
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+                ShowWarning(
+                    "KnowledgeTracker",
+                    AppLocalization.Translate("The file could not be imported. Check that it is a KnowledgeTracker export and try again."));
+            }
+        }
+
+        /// <summary>
+        /// Asks, once per batch, what to do with entries that already exist.
+        /// "Yes" keeps the local entries and imports only the new ones; "No"
+        /// imports the whole file as extra copies. Cancelling aborts the import.
+        /// </summary>
+        private ImportMode? ChooseImportMode(int duplicates)
+        {
+            var message = string.Format(
+                AppLocalization.Culture,
+                AppLocalization.Translate(
+                    "{0} entries already exist in your library.\r\n\r\nImport the remaining ones and keep the existing entries?"),
+                duplicates);
+
+            var answer = MessageBox.Show(
+                message,
+                AppLocalization.Translate("Import library"),
+                MessageBoxButtons.YesNoCancel,
+                MessageBoxIcon.Question);
+
+            return answer switch
+            {
+                DialogResult.Yes => ImportMode.SkipDuplicates,
+                DialogResult.No => ImportMode.ImportAsCopies,
+                _ => null,
+            };
+        }
+
+        /// <summary>
+        /// The outcome of an import, including why some entries were left out.
+        /// Only the reasons that actually occurred are mentioned.
+        /// </summary>
+        private static string ImportSummary(ImportResult result)
+        {
+            var lines = new List<string>
+            {
+                string.Format(
+                    AppLocalization.Culture,
+                    AppLocalization.Translate("Imported {0} of {1} entries."),
+                    result.Imported,
+                    result.Total),
+            };
+
+            if (result.SkippedDuplicates > 0)
+            {
+                lines.Add(string.Format(
+                    AppLocalization.Culture,
+                    AppLocalization.Translate("{0} entries already existed and were skipped."),
+                    result.SkippedDuplicates));
+            }
+
+            if (result.Invalid > 0)
+            {
+                lines.Add(string.Format(
+                    AppLocalization.Culture,
+                    AppLocalization.Translate("{0} entries were skipped because they are incomplete."),
+                    result.Invalid));
+            }
+
+            return string.Join(Environment.NewLine + Environment.NewLine, lines);
+        }
+
+        private static string ExportLibraryFileName() =>
+            $"knowledge-export-{DateTime.Now:yyyyMMdd-HHmmss}.json";
+
+        private void ShowInformation(string caption, string message) =>
+            MessageBox.Show(this, message, caption, MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+        private void ShowWarning(string caption, string message) =>
+            MessageBox.Show(this, message, caption, MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
         private Control BuildRoot()
         {
@@ -610,6 +809,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 card.OpenRequested += OnCardOpenRequested;
                 card.FavoriteRequested += OnCardFavoriteRequested;
                 card.DeleteRequested += OnCardDeleteRequested;
+                card.DuplicateRequested += OnCardDuplicateRequested;
                 _cards.Controls.Add(card);
             }
 
@@ -905,7 +1105,62 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 return true;
             }
 
+            if (keyData == (Keys.Control | Keys.E))
+            {
+                ExportLibrary();
+                return true;
+            }
+
+            if (keyData == (Keys.Control | Keys.I))
+            {
+                ImportLibrary();
+                return true;
+            }
+
             return base.ProcessCmdKey(ref msg, keyData);
+        }
+
+        /// <summary>Opens the editor on a copy of the entry the card represents.</summary>
+        private void OnCardDuplicateRequested(EntryCard card) => DuplicateEntry(card.Entry);
+
+        /// <summary>
+        /// Opens the editor on a copy of <paramref name="entry"/>: identity and
+        /// child collections are duplicated without their database ids, so
+        /// saving creates a new entry instead of overwriting the original.
+        /// </summary>
+        private void DuplicateEntry(KnowledgeEntry entry)
+        {
+            var copy = new KnowledgeEntry
+            {
+                Title = entry.Title,
+                Description = entry.Description,
+                DateResolved = entry.DateResolved,
+                ProjectName = entry.ProjectName,
+                ResolutionSteps = entry.ResolutionSteps,
+                Technologies = entry.Technologies,
+                Tags = entry.Tags,
+                Comments = entry.Comments,
+                CodeSnippet = entry.CodeSnippet,
+                IsFavorite = entry.IsFavorite,
+                YouTubeUrl = entry.YouTubeUrl,
+            };
+
+            foreach (var step in entry.Steps)
+            {
+                copy.Steps.Add(new Step { Description = step.Description });
+            }
+
+            foreach (var attachment in entry.Attachments)
+            {
+                copy.Attachments.Add(new AttachmentInfo
+                {
+                    FileName = attachment.FileName,
+                    FilePath = attachment.FilePath,
+                    DateAdded = attachment.DateAdded,
+                });
+            }
+
+            _navigation.NavigateTo<ctlAddEdit>(new EntryEditorRequest(copy));
         }
     }
 }

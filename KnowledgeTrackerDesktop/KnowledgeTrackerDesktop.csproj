@@ -51,6 +51,8 @@
     <PackageReference Include="Syncfusion.SfListView.WinForms" Version="35.1.39" />
     <PackageReference Include="Syncfusion.Office2016Theme.WinForms" Version="35.1.39" />
     <PackageReference Include="Syncfusion.Licensing" Version="35.1.39" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2792.45" />
+    <PackageReference Include="Markdig" Version="0.37.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -59,6 +61,18 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Assets\Images\portugal.png" />
     <EmbeddedResource Include="Assets\Images\Inglaterra.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="docs\Help.md">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="docs\Help.pt-PT.md">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="docs\Help.en.md">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

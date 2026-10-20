@@ -22,6 +22,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
         private readonly Label _favorite;
         private readonly Label _delete;
+        private readonly Label _duplicate;
         private readonly Font _deleteFont = new("Segoe MDL2 Assets", 12f);
         private readonly ContextMenuStrip _contextMenu;
         private bool _isSelected;
@@ -75,6 +76,24 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _delete.MouseEnter += (_, _) => _delete.ForeColor = AppTheme.Error;
             _delete.MouseLeave += (_, _) => _delete.ForeColor = AppTheme.SecondaryText;
 
+            // Duplicate copies the entry into the editor without touching the
+            // original, so it is a neutral action, not a destructive one.
+            _duplicate = new Label
+            {
+                AutoSize = false,
+                Size = new Size(28, 28),
+                BackColor = Color.Transparent,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = _deleteFont,
+                Text = "\uE8C8",
+                ForeColor = AppTheme.SecondaryText,
+                Cursor = Cursors.Hand,
+                AccessibleName = AppLocalization.Translate("Duplicate"),
+            };
+            _duplicate.Click += (_, _) => DuplicateRequested?.Invoke(this);
+            _duplicate.MouseEnter += (_, _) => _duplicate.ForeColor = AppTheme.PrimaryText;
+            _duplicate.MouseLeave += (_, _) => _duplicate.ForeColor = AppTheme.SecondaryText;
+
             _contextMenu = BuildContextMenu();
 
             var layout = BuildLayout();
@@ -110,6 +129,8 @@ namespace KnowledgeTrackerDesktop.UI.Views
         public event Action<EntryCard>? FavoriteRequested;
 
         public event Action<EntryCard>? DeleteRequested;
+
+        public event Action<EntryCard>? DuplicateRequested;
 
         /// <summary>Applies the selection visuals without raising events.</summary>
         public void SetSelected(bool selected)
@@ -219,11 +240,15 @@ namespace KnowledgeTrackerDesktop.UI.Views
             AppLocalization.Bind(favorite, "Toggle favorite");
             favorite.Click += (_, _) => FavoriteRequested?.Invoke(this);
 
+            var duplicate = new ToolStripMenuItem("Duplicate");
+            AppLocalization.Bind(duplicate, "Duplicate");
+            duplicate.Click += (_, _) => DuplicateRequested?.Invoke(this);
+
             var delete = new ToolStripMenuItem("Delete");
             AppLocalization.Bind(delete, "Delete");
             delete.Click += (_, _) => DeleteRequested?.Invoke(this);
 
-            menu.Items.AddRange(new ToolStripItem[] { open, favorite, delete });
+            menu.Items.AddRange(new ToolStripItem[] { open, favorite, duplicate, delete });
             ContextMenuStrip = menu;
             return menu;
         }
@@ -236,7 +261,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
         /// </summary>
         private void WireMouseEvents(Control control)
         {
-            if (control == _favorite || control == _delete)
+            if (control == _favorite || control == _delete || control == _duplicate)
             {
                 return;
             }
@@ -309,6 +334,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
             _favorite.Margin = Padding.Empty;
             _delete.Margin = Padding.Empty;
+            _duplicate.Margin = Padding.Empty;
 
             var actions = new FlowLayoutPanel
             {
@@ -321,6 +347,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 Margin = new Padding(6, 0, 0, 0),
             };
             actions.Controls.Add(_favorite);
+            actions.Controls.Add(_duplicate);
             actions.Controls.Add(_delete);
 
             outer.Controls.Add(content, 0, 0);

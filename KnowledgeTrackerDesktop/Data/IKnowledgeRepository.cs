@@ -38,5 +38,20 @@ namespace KnowledgeTrackerDesktop.Data
         /// Distinct technologies across entries, most used first.
         /// </summary>
         Task<IReadOnlyList<string>> GetAllTechnologiesAsync();
+
+        /// <summary>
+        /// Titles and projects of the entries that already exist, used to detect
+        /// imports that would duplicate local data without loading every entry.
+        /// Compared case-insensitively as a title/project pair.
+        /// </summary>
+        Task<IReadOnlyList<EntryIdentity>> GetIdentitiesAsync();
+
+        /// <summary>
+        /// Inserts every entry together with its Steps and Attachments in one
+        /// transaction: either the whole batch is written or nothing is.
+        /// Each entry is always inserted as a new row, so existing local data is
+        /// never modified by an import.
+        /// </summary>
+        Task InsertBatchAsync(IReadOnlyList<KnowledgeEntry> entries);
     }
 }

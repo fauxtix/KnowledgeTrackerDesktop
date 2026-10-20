@@ -39,5 +39,26 @@ namespace KnowledgeTrackerDesktop.Services
         /// Distinct technologies across entries, most used first.
         /// </summary>
         Task<IReadOnlyList<string>> GetAllTechnologiesAsync();
+
+        /// <summary>
+        /// Builds the portable export document for the whole knowledge base.
+        /// Read-only: it never touches the database beyond loading entries.
+        /// </summary>
+        Task<KnowledgeExport> ExportAsync();
+
+        /// <summary>
+        /// Writes the entries of an import document through the repository in a
+        /// single transaction, skipping entries that violate the entry rules and
+        /// applying <paramref name="mode"/> to those that already exist locally.
+        /// </summary>
+        Task<ImportResult> ImportAsync(KnowledgeExport document, ImportMode mode);
+
+        /// <summary>
+        /// How many entries in <paramref name="document"/> already exist locally
+        /// (matched on title + project) and are valid for import. The UI asks
+        /// this before importing so it only prompts about duplicates when there
+        /// really are some.
+        /// </summary>
+        Task<int> CountDuplicatesAsync(KnowledgeExport document);
     }
 }

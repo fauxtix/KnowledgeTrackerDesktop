@@ -238,6 +238,15 @@ namespace KnowledgeTrackerDesktop.Tests.UI
 
             public Task<IReadOnlyList<string>> GetAllTechnologiesAsync() =>
                 Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+
+            public Task<KnowledgeExport> ExportAsync() =>
+                Task.FromResult(new KnowledgeExport());
+
+            public Task<ImportResult> ImportAsync(KnowledgeExport document, ImportMode mode) =>
+                Task.FromResult(new ImportResult(0, 0, 0));
+
+            public Task<int> CountDuplicatesAsync(KnowledgeExport document) =>
+                Task.FromResult(0);
         }
 
         private sealed class FakeNavigation : INavigationService
