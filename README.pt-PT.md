@@ -69,6 +69,21 @@ conjunto.
 Obtenha e utilize uma licença de acordo com os termos da Syncfusion. Não
 adicione a chave ao repositório.
 
+A chave pertence a quem detém a licença Syncfusion, pelo que um clone limpo não
+tem chave e a aplicação não arranca: o `Program.Main()` procura a chave no
+ambiente e depois nos metadados do assembly e, se não a encontrar em nenhum dos
+sítios, mostra um diálogo "A chave de licença Syncfusion não foi encontrada" e
+termina. Defina a variável (ou produza um pacote, que embute a chave) antes de
+executar a aplicação.
+
+Uma [Licença Community](https://www.syncfusion.com/products/communitylicense)
+gratuita é suficiente para esta aplicação quando cumpre os requisitos (atualmente,
+uma empresa ou pessoa com receita bruta inferior a 1 milhão de dólares e no
+máximo cinco programadores). Gere a chave de licença na sua conta Syncfusion e
+use-a como valor de `SYNCFUSION_LICENSE_KEY`. Nenhum controlo Syncfusion aqui
+utilizado está restringido por edição. Se deixar de cumprir os requisitos,
+obtenha antes uma licença paga.
+
 ## Compilar e executar
 
 Clone o repositório e compile a solução:
@@ -154,8 +169,11 @@ administrador):
 
 ```powershell
 Import-Certificate -FilePath .\scripts\KnowledgeTrackerDev.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
-Add-AppxPackage .\AppPackages\KnowledgeTrackerDesktop.Package_1.0.0.0_x64_Test\KnowledgeTrackerDesktop.Package_1.0.0.0_x64.msix
+Add-AppxPackage .\AppPackages\KnowledgeTrackerDesktop.Package_1.0.2.0_x64_Test\KnowledgeTrackerDesktop.Package_1.0.2.0_x64.msix
 ```
+
+(O caminho `1.0.2.0` acima corresponde ao `Identity/@Version` atual do manifesto;
+substitua-o pela versão que compilou.)
 
 A pasta `AppPackages\..._Test\` também contém o `Install.ps1` (e o
 `Add-AppDevPackage.ps1`) que instalam o pacote e o certificado de uma só vez.

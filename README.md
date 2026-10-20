@@ -65,6 +65,19 @@ to persist the entry and its resolution steps together.
 Obtain and use a Syncfusion license according to Syncfusion's licensing terms.
 Do not commit the key to the repository.
 
+The key belongs to whoever holds the Syncfusion license, so a clean clone has no
+key and the application will not start: `Program.Main()` looks for the key in the
+environment and then in the assembly metadata, and if neither is present it shows
+a "Syncfusion license key was not found" dialog and exits. Set the variable (or
+produce a packaged build, which embeds the key) before running the app.
+
+A free [Community License](https://www.syncfusion.com/products/communitylicense)
+is sufficient for this application when you qualify for it (currently a company
+or individual with less than $1M USD in gross revenue and no more than five
+developers). Generate the license key from your Syncfusion account and use it as
+the `SYNCFUSION_LICENSE_KEY` value. No Syncfusion control used here is restricted
+by edition. If you stop qualifying, obtain a paid license instead.
+
 ## Build and run
 
 Clone the repository and build the solution:
@@ -148,8 +161,11 @@ Install the package locally (trust the certificate once, as administrator):
 
 ```powershell
 Import-Certificate -FilePath .\scripts\KnowledgeTrackerDev.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
-Add-AppxPackage .\AppPackages\KnowledgeTrackerDesktop.Package_1.0.0.0_x64_Test\KnowledgeTrackerDesktop.Package_1.0.0.0_x64.msix
+Add-AppxPackage .\AppPackages\KnowledgeTrackerDesktop.Package_1.0.2.0_x64_Test\KnowledgeTrackerDesktop.Package_1.0.2.0_x64.msix
 ```
+
+(The `1.0.2.0` path above matches the current `Identity/@Version` in the
+manifest; replace it with whatever version you built.)
 
 The `AppPackages\..._Test\` folder also contains `Install.ps1` (and
 `Add-AppDevPackage.ps1`) that install the package and its certificate in one
