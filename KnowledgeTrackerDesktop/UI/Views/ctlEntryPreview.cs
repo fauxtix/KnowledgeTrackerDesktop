@@ -297,33 +297,131 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 Margin = new Padding(0, 16, 0, 0),
             };
 
+            // Each button is paired with every caption it may show, in both
+            // languages, so the equalised width is measured against the longest
+            // one whichever language is active when the preview is rendered.
+            var buttons = new List<(SfButton Button, IReadOnlyList<string> Captions)>();
+
             // Primary action: opening the editor is what the preview is for, so
             // it carries the accent fill and a taller footprint.
-            actions.Controls.Add(CreateActionButton("Edit Entry", RequestEditEntry, ButtonRole.Primary));
+            buttons.Add((
+                CreateActionButton("Edit Entry", RequestEditEntry, ButtonRole.Primary),
+                Captions("Edit Entry")));
 
             if (ShowsCodeAction)
             {
-                actions.Controls.Add(CreateActionButton("Open code", RequestOpenCode, ButtonRole.Secondary));
+                buttons.Add((
+                    CreateActionButton("Open code", RequestOpenCode, ButtonRole.Secondary),
+                    Captions("Open code")));
             }
 
             if (ShowsAttachmentsAction)
             {
-                actions.Controls.Add(CreateActionButton(
-                    () => string.Format(
-                        AppLocalization.Culture,
-                        AppLocalization.Translate("Open attachments ({0})"),
-                        CurrentEntry?.Attachments.Count ?? 0),
-                    RequestOpenAttachments,
-                    ButtonRole.Secondary));
+                var count = CurrentEntry?.Attachments.Count ?? 0;
+                buttons.Add((
+                    CreateActionButton(
+                        () => string.Format(
+                            AppLocalization.Culture,
+                            AppLocalization.Translate("Open attachments ({0})"),
+                            CurrentEntry?.Attachments.Count ?? 0),
+                        RequestOpenAttachments,
+                        ButtonRole.Secondary),
+                    FormattedCaptions("Open attachments ({0})", count)));
             }
 
             if (ShowsLinkAction)
             {
-                actions.Controls.Add(CreateActionButton("Open video", RequestOpenLink, ButtonRole.Secondary));
+                buttons.Add((
+                    CreateActionButton("Open video", RequestOpenLink, ButtonRole.Secondary),
+                    Captions("Open video")));
             }
+
+            actions.Controls.AddRange(buttons.Select(pair => pair.Button).ToArray());
+
+            // Give every button the same width (the widest caption's) so they line
+            // up instead of each sizing to its own text.
+            EqualizeButtonWidths(buttons);
 
             AddRow(actions);
         }
+
+        /// <summary>
+        /// Widens every button to match the widest caption, so a row of actions
+        /// reads as a set instead of a ragged line. Only the width is equalised;
+        /// the Primary/Secondary height difference is kept on purpose.
+        ///
+        /// Every caption is measured in both languages and a fixed slack is added,
+        /// so a single width fits whichever language is active (and the longest
+        /// translation is never clipped by a couple of pixels).
+        /// </summary>
+        private static void EqualizeButtonWidths(
+            IReadOnlyList<(SfButton Button, IReadOnlyList<string> Captions)> buttons)
+        {
+            if (buttons.Count == 0)
+            {
+                return;
+            }
+
+            var widest = 0;
+            foreach (var (button, captions) in buttons)
+            {
+                foreach (var text in captions)
+                {
+                    var width = TextRenderer.MeasureText(
+                        text,
+                        button.Font,
+                        Size.Empty,
+                        TextFormatFlags.NoPadding).Width;
+
+                    // Account for the button's horizontal padding and border, plus
+                    // a small slack so the longest translation is never clipped by
+                    // a few pixels of rendering difference.
+                    const int slack = 10;
+                    width += button.Padding.Horizontal + slack;
+                    if (width > widest)
+                    {
+                        widest = width;
+                    }
+                }
+            }
+
+            if (widest <= 0)
+            {
+                return;
+            }
+
+            foreach (var (button, _) in buttons)
+            {
+                var height = button.MinimumSize.Height;
+                button.AutoSize = false;
+                button.MinimumSize = new Size(widest, height);
+                button.Width = widest;
+            }
+        }
+
+        /// <summary>
+        /// The captions a text-bound button may show: the English key and its
+        /// Portuguese translation, so the equalised width fits both languages.
+        /// </summary>
+        private static IReadOnlyList<string> Captions(string key) => new[]
+        {
+            key,
+            AppLocalization.Translate(key, AppLanguage.Portuguese),
+        };
+
+        /// <summary>
+        /// The formatted captions of a button whose text carries a value (the
+        /// attachments count), in both languages, so the width fits whichever
+        /// language is active.
+        /// </summary>
+        private static IReadOnlyList<string> FormattedCaptions(string formatKey, int value) => new[]
+        {
+            string.Format(AppLocalization.Culture, formatKey, value),
+            string.Format(
+                AppLocalization.Culture,
+                AppLocalization.Translate(formatKey, AppLanguage.Portuguese),
+                value),
+        };
 
         private void AddDescription()
         {
@@ -392,18 +490,53 @@ namespace KnowledgeTrackerDesktop.UI.Views
             }
         }
 
+        /// <summary>
+        /// Renders a section heading: a title in the accent colour with a
+        /// full-width separator underneath, so each block of the preview
+        /// ("Resolution steps", "Description", "Attachments", "Project",
+        /// "Tags", "Date resolved") reads as a distinct section instead of a
+        /// faint caption. Uses the same <see cref="AppTheme.Fonts.SectionTitle"/>
+        /// as the editor cards for consistency.
+        /// </summary>
         private void AddCaption(string key)
         {
+            var section = new TableLayoutPanel
+            {
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2,
+                Margin = new Padding(0, 20, 0, 4),
+                Padding = Padding.Empty,
+                BackColor = AppTheme.Surface,
+            };
+            section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
             var caption = new Label
             {
                 AutoSize = true,
                 Dock = DockStyle.Fill,
-                Font = AppTheme.Fonts.Small,
-                ForeColor = AppTheme.SecondaryText,
-                Margin = new Padding(0, 14, 0, 2),
+                Font = AppTheme.Fonts.SectionTitle,
+                ForeColor = AppTheme.Accent,
+                Margin = Padding.Empty,
             };
             AppLocalization.Bind(caption, key);
-            AddRow(caption);
+
+            // Full-width underline separating this heading from its content.
+            var separator = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 1,
+                BackColor = AppTheme.CardBorder,
+                Margin = new Padding(0, 4, 0, 0),
+            };
+
+            section.Controls.Add(caption, 0, 0);
+            section.Controls.Add(separator, 0, 1);
+            AddRow(section);
         }
 
         private void AddValue(
@@ -434,9 +567,9 @@ namespace KnowledgeTrackerDesktop.UI.Views
         }
 
         /// <summary>
-        /// Creates an action button whose width adapts to its (localised) text
-        /// instead of a fixed size, so long captions such as "Open attachments
-        /// (12)" are never clipped. The role drives the visual hierarchy.
+        /// Creates an action button. Its width is provisional: <see cref="AddActions"/>
+        /// equalises the whole row to the widest caption afterwards. The role
+        /// drives the visual hierarchy (Primary is filled and taller).
         /// </summary>
         private static SfButton CreateActionButton(string key, Action onClick, ButtonRole role)
         {

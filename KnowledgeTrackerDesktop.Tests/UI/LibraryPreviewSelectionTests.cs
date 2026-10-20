@@ -171,7 +171,7 @@ namespace KnowledgeTrackerDesktop.Tests.UI
 
             var split = Split(view);
             Assert.Equal(340, split.Panel1MinSize);
-            Assert.Equal(380, split.Panel2MinSize);
+            Assert.Equal(460, split.Panel2MinSize);
             Assert.InRange(
                 split.SplitterDistance,
                 split.Panel1MinSize,
@@ -190,7 +190,7 @@ namespace KnowledgeTrackerDesktop.Tests.UI
 
             Assert.InRange(split.Panel2.Width, previewWidth - 2, previewWidth + 2);
             Assert.Equal(340, split.Panel1MinSize);
-            Assert.Equal(380, split.Panel2MinSize);
+            Assert.Equal(460, split.Panel2MinSize);
 
             // Narrower than the minimum sizes: neither pane may collapse.
             view.Size = new Size(760, 600);

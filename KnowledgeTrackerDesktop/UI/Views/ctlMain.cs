@@ -192,7 +192,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             }
 
             const int leftMinimum = 340;
-            const int rightMinimum = 380;
+            const int rightMinimum = 460;
             var available = _split.Width;
 
             // Too narrow for both minimum sizes: leave the pane proportions

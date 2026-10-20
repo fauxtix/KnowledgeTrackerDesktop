@@ -529,6 +529,65 @@ namespace KnowledgeTrackerDesktop.Tests.UI
             Assert.All(borrowed, font => Assert.True(font.GetHeight() > 0));
         }
 
+        [Fact]
+        public void ActionButtonsShareTheWidestButtonsWidth()
+        {
+            using var preview = new ctlEntryPreview();
+            preview.SetEntry(new KnowledgeEntry
+            {
+                Id = 1,
+                Title = "Equal buttons",
+                CodeSnippet = "var value = 1;",
+                Attachments =
+                {
+                    new AttachmentInfo { FileName = "a.png" },
+                    new AttachmentInfo { FileName = "b.png" },
+                },
+                YouTubeUrl = "https://youtu.be/abc",
+            });
+
+            preview.Size = new Size(900, 500);
+            preview.PerformLayout();
+
+            var buttons = Descendants(preview).OfType<SfButton>().ToArray();
+            Assert.True(buttons.Length > 1, "expected several action buttons");
+
+            // Every button is as wide as the widest caption, so the row lines up
+            // instead of each sizing to its own (differently long) text.
+            var widths = buttons.Select(button => button.Width).Distinct().ToArray();
+            Assert.Single(widths);
+            Assert.Equal(buttons.Max(button => button.Width), widths[0]);
+
+            // The equalised width fits the longest caption in either language.
+            // The English "Open attachments (2)" is longer than the Portuguese
+            // translation, so it must be the one the width is measured against.
+            var englishAttachments = AppLocalization.Translate(
+                "Open attachments ({0})",
+                AppLanguage.English);
+            var portugueseAttachments = AppLocalization.Translate(
+                "Open attachments ({0})",
+                AppLanguage.Portuguese);
+            var englishWidth = TextRenderer.MeasureText(
+                string.Format(AppLocalization.Culture, englishAttachments, 2),
+                buttons[0].Font).Width;
+            var portugueseWidth = TextRenderer.MeasureText(
+                string.Format(AppLocalization.Culture, portugueseAttachments, 2),
+                buttons[0].Font).Width;
+            Assert.True(
+                englishWidth > portugueseWidth,
+                "the English caption is expected to be the widest one");
+            Assert.True(
+                widths[0] >= englishWidth,
+                $"button width {widths[0]} must fit the English caption ({englishWidth})");
+
+            // The visual hierarchy is untouched: Primary stays taller than Secondary.
+            var primary = buttons.Single(button => Equals(button.Tag, "Edit Entry"));
+            var secondary = buttons.First(button => !Equals(button.Tag, "Edit Entry"));
+            Assert.True(
+                primary.Height > secondary.Height,
+                $"primary height {primary.Height} should exceed secondary {secondary.Height}");
+        }
+
         private static Label LabelWithText(Control root, string text) =>
             Descendants(root).OfType<Label>().Single(label => label.Text == text);
 
