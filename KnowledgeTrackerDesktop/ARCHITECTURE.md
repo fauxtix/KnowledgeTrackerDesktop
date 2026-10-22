@@ -145,6 +145,8 @@ Comments
 CodeSnippet
 IsFavorite
 YouTubeUrl
+ProjectOriginKind
+ProjectOriginLocation
 
 Step
 ----
@@ -170,6 +172,33 @@ KnowledgeEntry.Attachments
 ```
 
 These are `[Ignore]` properties and are not SQLite columns.
+
+### The typed project origin
+
+`ProjectOriginKind` and `ProjectOriginLocation` record where the knowledge
+came from:
+
+```text
+ProjectOriginKind     INTEGER (nullable)  1 = LocalFolder, 2 = GitRepository, 3 = WebPage
+ProjectOriginLocation VARCHAR (nullable)
+```
+
+Both columns are nullable: a null kind means "the origin was not recorded",
+which is different from an origin that points at something.
+
+The location is interpreted according to the kind: an absolute path for a
+local folder, an http(s) URL for a repository or a web page. The rules live in
+`Services/ProjectOriginRules` and are enforced by `Services/EntryValidator`.
+
+The location is a **record, not a guarantee**: the folder may have been moved
+and the site may be gone. Nothing checks that the target still exists; the
+open action reports a missing target instead of failing silently, exactly like
+an attachment.
+
+The two columns were added at the end of the model, so a fresh database and a
+migrated one keep the same column order. The migration (schema version 2) is
+performed by the additive `CreateTableAsync<KnowledgeEntry>()` and needs no
+raw DDL.
 
 ---
 

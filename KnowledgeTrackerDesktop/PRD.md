@@ -39,6 +39,8 @@ A KnowledgeEntry contains:
 * CodeSnippet
 * IsFavorite
 * YouTubeUrl
+* ProjectOriginKind
+* ProjectOriginLocation
 
 It also has related collections:
 
@@ -48,6 +50,29 @@ It also has related collections:
 The SQLite representation stores the main fields in `KnowledgeEntry`.
 
 `Steps` and `Attachments` are related entities and are not columns of the KnowledgeEntry table.
+
+---
+
+## 3.1 Project Origin
+
+`ProjectName` names the project an entry belongs to. It says nothing about
+where the knowledge itself came from, so every entry can also record a **typed
+origin**:
+
+* `ProjectOriginKind` — `LocalFolder`, `GitRepository` or `WebPage`. It is
+  empty when the origin was not recorded.
+* `ProjectOriginLocation` — an absolute folder path for a local folder, an
+  http(s) URL for a repository or a web page.
+
+The two go together: a kind without a location points nowhere, and a location
+without a kind cannot be interpreted.
+
+The origin is a record, not a guarantee. The folder may have been moved and the
+site may be gone, so the application reports a missing target when the user
+opens it instead of pretending the origin is still there.
+
+The origin is per entry, not per project: the "found this on a web page" case
+belongs to the entry, not to the application it documents.
 
 ---
 
@@ -166,6 +191,7 @@ Search should cover relevant KnowledgeEntry fields, including:
 * Title
 * Description
 * ProjectName
+* ProjectOriginLocation
 * Technologies
 * Tags
 * Comments
@@ -183,6 +209,9 @@ The main screen supports:
 
 * favorite filtering
 * tag filtering
+* project filtering
+* origin filtering (the kind of source the knowledge came from, or the entries
+  whose origin was never recorded)
 
 Filtering should be combinable with search and sorting.
 
@@ -233,6 +262,7 @@ The application provides statistics such as:
 * entries over time
 * entries by project
 * entries by tag
+* entries by origin kind
 
 Statistics should be useful for understanding the knowledge base without becoming a primary feature.
 

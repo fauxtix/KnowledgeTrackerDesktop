@@ -52,7 +52,29 @@ namespace KnowledgeTrackerDesktop.Services
                         .SelectMany(e => KnowledgeEntryTags.Split(e.Tags)
                             .Distinct(StringComparer.OrdinalIgnoreCase)),
                     TopListSize),
+                EntriesByOrigin = ComputeEntriesByOrigin(entries),
+                EntriesWithoutOrigin = entries.Count(entry => entry.ProjectOriginKind is null),
             };
+        }
+
+        /// <summary>
+        /// How many entries recorded each origin kind. Every kind is listed,
+        /// including the ones nobody used yet, so the breakdown does not
+        /// change shape as the library grows.
+        /// </summary>
+        private static IReadOnlyList<OriginCount> ComputeEntriesByOrigin(
+            IReadOnlyList<KnowledgeEntry> entries)
+        {
+            var counts = entries
+                .Where(entry => entry.ProjectOriginKind.HasValue)
+                .GroupBy(entry => entry.ProjectOriginKind!.Value)
+                .ToDictionary(group => group.Key, group => group.Count());
+
+            return ProjectOriginRules.Kinds
+                .Select(kind => new OriginCount(
+                    kind,
+                    counts.TryGetValue(kind, out var count) ? count : 0))
+                .ToList();
         }
 
         private static int GetDistinctProjectCount(IReadOnlyList<KnowledgeEntry> entries) =>

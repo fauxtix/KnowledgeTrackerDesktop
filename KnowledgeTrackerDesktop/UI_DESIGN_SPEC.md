@@ -204,6 +204,7 @@ Each entry must have visually distinct elements:
 - step count
 - attachment count
 - short description/excerpt
+- origin (when the entry records one)
 
 Example:
 
@@ -222,6 +223,14 @@ Metadata is visually secondary.
 Tags should be compact chips.
 
 Counts should be compact metadata rather than large controls.
+
+### The origin on a card
+
+When the entry records an origin, the card shows an "Origin" caption with a
+short form of the location (the folder name, or `owner/repo` for a link).
+
+The origin value is a link: clicking it opens the source of the knowledge
+without selecting or opening the entry, exactly like the favorite affordance.
 
 ## 4.4 Selection
 
@@ -270,6 +279,7 @@ It should show:
 - code availability
 - attachment availability
 - YouTube availability
+- origin (kind and location, when the entry records one)
 
 The preview must not become a second full editor.
 
@@ -282,11 +292,18 @@ Secondary actions:
 - Toggle favorite
 - Delete
 
+### The origin in the preview
+
+The preview shows the kind of origin and the full location, plus an "Open
+origin" action that opens the folder or the link. When the target no longer
+exists, the action says so instead of failing silently.
+
 ## 4.8 Search and filters
 
 Search must remain prominent.
 
-Search, favorites, tag filtering and sorting must be combinable.
+Search, favorites, tag filtering, origin filtering and sorting must be
+combinable.
 
 The active filters should be visually obvious.
 
@@ -375,6 +392,19 @@ It should not be hidden inside a GroupBox.
 Project, Technologies and Date should be arranged horizontally when window size allows.
 
 Tags and Favorite should appear in a compact metadata row.
+
+## 5.5.1 Origin
+
+The origin is edited in its own section of the General tab, next to the
+project it complements:
+
+- a type selector (not recorded / local folder / git repository / web page)
+- the location input
+- a "Browse..." action, only for a local folder
+- an "Open origin" action, to check that the recorded target still exists
+
+The location input is disabled while no type is selected, so the form never
+shows a location that cannot be interpreted.
 
 ## 5.6 Description
 
@@ -598,6 +628,7 @@ Below:
 - entries over time
 - top projects
 - top tags
+- entries by origin
 
 Projects and tags should be actionable where practical.
 
@@ -606,6 +637,9 @@ For example:
 Clicking a project should navigate to Library with that project filter active.
 
 Clicking a tag should navigate to Library with that tag filter active.
+
+Clicking an origin kind should navigate to Library with that origin filter
+active.
 
 ## 7.3 Empty state
 

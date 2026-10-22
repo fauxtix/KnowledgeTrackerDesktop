@@ -478,6 +478,37 @@ Do not optimize before there is a measurable need.
 
 ---
 
+# Features
+
+## 20. Typed Project Origin
+
+### Status: Completed
+
+`KnowledgeEntry` records where the knowledge came from, per entry, through two
+nullable columns:
+
+```text
+ProjectOriginKind      1 = LocalFolder, 2 = GitRepository, 3 = WebPage
+ProjectOriginLocation  absolute path (local) or http(s) URL (git / web)
+```
+
+The rules live in `Services/ProjectOriginRules` and are enforced by
+`Services/EntryValidator`: the kind and the location go together, a local
+folder needs a rooted path, and the other kinds need an http(s) URL.
+
+The origin is surfaced in the editor (kind + location + browse/open), on the
+card, in the preview, in the library filter bar, in the search, in the
+statistics breakdown and in the export/import format (version 2).
+
+The location is a record, not a guarantee: opening a missing folder reports it
+instead of failing silently, exactly like an attachment.
+
+Deferred on purpose: cloning a repository, `owner/repo` normalisation, bulk
+"apply this origin to every entry of the project" and advanced location
+filters.
+
+---
+
 # Future Features
 
 Potential future features:
@@ -511,6 +542,7 @@ The following capabilities already exist or are part of the current application:
 * Markdown
 * code snippets
 * YouTube links
+* typed project origin (local folder / git repository / web page)
 * statistics
 * navigation
 * Syncfusion UI

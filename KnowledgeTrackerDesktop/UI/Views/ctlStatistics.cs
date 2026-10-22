@@ -38,6 +38,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
         private readonly Label _activityEmptyLabel = new();
         private readonly TableLayoutPanel _projectsList = new();
         private readonly TableLayoutPanel _tagsList = new();
+        private readonly TableLayoutPanel _originsList = new();
 
         private readonly TableLayoutPanel _statePanel = new();
         private readonly Label _stateLabel = new();
@@ -217,14 +218,16 @@ namespace KnowledgeTrackerDesktop.UI.Views
             var row = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                ColumnCount = 2,
+                ColumnCount = 3,
                 RowCount = 1,
                 Margin = Padding.Empty,
             };
-            row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
-            row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 34f));
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33f));
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33f));
             row.Controls.Add(BuildListSection("Top projects", _projectsList), 0, 0);
             row.Controls.Add(BuildListSection("Top tags", _tagsList), 1, 0);
+            row.Controls.Add(BuildListSection("Origins", _originsList), 2, 0);
             return row;
         }
 
@@ -327,6 +330,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             PopulateActivityChart(summary.EntriesByMonth);
             PopulateList(_projectsList, summary.TopProjects, "No projects yet.", OpenLibraryProject);
             PopulateList(_tagsList, summary.TopTags, "No tags yet.", OpenLibraryTag);
+            PopulateOriginList(summary.EntriesByOrigin, summary.EntriesWithoutOrigin);
 
             _statePanel.Visible = false;
             _contentHost.Visible = true;
@@ -392,6 +396,86 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
             list.ResumeLayout(true);
         }
+
+        /// <summary>
+        /// Fills the origin breakdown: one row per kind of source, plus the
+        /// entries whose origin was never recorded. Every row opens the
+        /// Library filtered by that kind.
+        /// </summary>
+        private void PopulateOriginList(
+            IReadOnlyList<OriginCount> origins,
+            int withoutOrigin)
+        {
+            _originsList.SuspendLayout();
+            _originsList.Controls.Clear();
+            _originsList.RowStyles.Clear();
+            _originsList.ColumnCount = 1;
+
+            var rows = new List<(string Label, int Count, OriginFilterOption Option)>();
+            foreach (var origin in origins)
+            {
+                rows.Add((
+                    AppLocalization.Translate(ProjectOriginRules.DescribeKind(origin.Kind)),
+                    origin.Count,
+                    OriginFilterOptionFor(origin.Kind)));
+            }
+
+            if (withoutOrigin > 0)
+            {
+                rows.Add((
+                    AppLocalization.Translate("Not recorded"),
+                    withoutOrigin,
+                    OriginFilterOption.NotRecorded));
+            }
+
+            if (rows.Count == 0)
+            {
+                var emptyLabel = new Label
+                {
+                    AutoSize = false,
+                    Dock = DockStyle.Fill,
+                    Height = 28,
+                    ForeColor = AppTheme.SecondaryText,
+                    TextAlign = ContentAlignment.MiddleLeft,
+                    Margin = new Padding(0, 4, 0, 4),
+                };
+                AppLocalization.Bind(emptyLabel, "No origins yet.");
+                _originsList.RowCount = 2;
+                _originsList.Controls.Add(emptyLabel, 0, 0);
+                _originsList.RowStyles.Add(new RowStyle(SizeType.Absolute, 34f));
+                _originsList.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+            }
+            else
+            {
+                _originsList.RowCount = rows.Count + 1;
+                for (var index = 0; index < rows.Count; index++)
+                {
+                    var item = rows[index];
+                    var option = item.Option;
+                    var row = new StatListRow(item.Label, item.Count, () => OpenLibraryOrigin(option))
+                    {
+                        Dock = DockStyle.Fill,
+                    };
+                    _originsList.Controls.Add(row, 0, index);
+                    _originsList.RowStyles.Add(new RowStyle(SizeType.Absolute, 34f));
+                }
+
+                _originsList.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+            }
+
+            _originsList.ResumeLayout(true);
+        }
+
+        private static OriginFilterOption OriginFilterOptionFor(ProjectOriginKind kind) => kind switch
+        {
+            ProjectOriginKind.LocalFolder => OriginFilterOption.LocalFolder,
+            ProjectOriginKind.GitRepository => OriginFilterOption.GitRepository,
+            ProjectOriginKind.WebPage => OriginFilterOption.WebPage,
+            _ => OriginFilterOption.All,
+        };
+
+        private void OpenLibraryOrigin(OriginFilterOption option) =>
+            _navigation.NavigateTo<ctlMain>(new LibraryNavigationRequest(OriginFilter: option));
 
         private void OpenLibraryProject(string project) =>
             _navigation.NavigateTo<ctlMain>(new LibraryNavigationRequest(ProjectName: project));

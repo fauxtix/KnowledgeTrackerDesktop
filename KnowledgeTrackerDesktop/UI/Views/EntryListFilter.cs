@@ -19,7 +19,8 @@ namespace KnowledgeTrackerDesktop.UI.Views
             ISet<string>? selectedTags,
             bool favoritesOnly,
             EntrySortMode sortMode,
-            string? projectName = null)
+            string? projectName = null,
+            OriginFilterOption originFilter = OriginFilterOption.All)
         {
             ArgumentNullException.ThrowIfNull(source);
 
@@ -33,6 +34,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 MatchesSearch(entry, searchText) &&
                 (!favoritesOnly || entry.IsFavorite) &&
                 MatchesProject(entry, normalizedProject) &&
+                MatchesOrigin(entry, originFilter) &&
                 MatchesAllTags(entry, tags));
 
             return Sort(filtered, sortMode).ToList();
@@ -58,6 +60,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             if (Contains(entry.Title, needle) ||
                 Contains(entry.Description, needle) ||
                 Contains(entry.ProjectName, needle) ||
+                Contains(entry.ProjectOriginLocation, needle) ||
                 Contains(entry.Technologies, needle) ||
                 Contains(entry.Tags, needle) ||
                 Contains(entry.Comments, needle) ||
@@ -164,6 +167,18 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 entry.ProjectName?.Trim(),
                 projectName,
                 StringComparison.OrdinalIgnoreCase);
+
+        private static bool MatchesOrigin(KnowledgeEntry entry, OriginFilterOption filter) => filter switch
+        {
+            OriginFilterOption.LocalFolder =>
+                entry.ProjectOriginKind == ProjectOriginKind.LocalFolder,
+            OriginFilterOption.GitRepository =>
+                entry.ProjectOriginKind == ProjectOriginKind.GitRepository,
+            OriginFilterOption.WebPage =>
+                entry.ProjectOriginKind == ProjectOriginKind.WebPage,
+            OriginFilterOption.NotRecorded => entry.ProjectOriginKind is null,
+            _ => true,
+        };
 
         private static bool MatchesAllTags(KnowledgeEntry entry, IReadOnlyList<string> tags)
         {

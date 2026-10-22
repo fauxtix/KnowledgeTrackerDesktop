@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using KnowledgeTrackerDesktop.Core;
+using KnowledgeTrackerDesktop.Services;
 using KnowledgeTrackerDesktop.UI.Theme;
 using Syncfusion.WinForms.Controls;
 
@@ -65,6 +66,8 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
         public event Action<KnowledgeEntry, AttachmentInfo>? OpenAttachmentRequested;
 
+        public event Action<KnowledgeEntry>? OpenOriginRequested;
+
         public string TitleText => CurrentEntry?.Title ?? string.Empty;
 
         public string ProjectText =>
@@ -81,6 +84,18 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
         public string DescriptionText =>
             MarkdownPreviewRenderer.ToPlainText(CurrentEntry?.Description);
+
+        /// <summary>The kind of the recorded origin, or an empty string.</summary>
+        public string OriginKindText =>
+            CurrentEntry?.ProjectOriginKind is { } kind
+                ? ProjectOriginRules.DescribeKind(kind)
+                : string.Empty;
+
+        /// <summary>The recorded origin location, or an empty string.</summary>
+        public string OriginLocationText =>
+            string.IsNullOrWhiteSpace(CurrentEntry?.ProjectOriginLocation)
+                ? string.Empty
+                : CurrentEntry.ProjectOriginLocation!.Trim();
 
         public IReadOnlyList<string> StepHeadings =>
             StepRows().Select(row => StepHeading(row.Position)).ToArray();
@@ -114,6 +129,10 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
         public bool ShowsLinkAction =>
             EntryOpenActions.IsHttpUrl(CurrentEntry?.YouTubeUrl);
+
+        public bool ShowsOrigin =>
+            CurrentEntry?.ProjectOriginKind is not null &&
+            !string.IsNullOrWhiteSpace(CurrentEntry.ProjectOriginLocation);
 
         /// <summary>Previews <paramref name="entry"/>, or shows the empty state when null.</summary>
         public void SetEntry(KnowledgeEntry? entry)
@@ -164,6 +183,14 @@ namespace KnowledgeTrackerDesktop.UI.Views
             if (CurrentEntry is { } entry && entry.Attachments.Contains(attachment))
             {
                 OpenAttachmentRequested?.Invoke(entry, attachment);
+            }
+        }
+
+        public void RequestOpenOrigin()
+        {
+            if (CurrentEntry is { } entry && ShowsOrigin)
+            {
+                OpenOriginRequested?.Invoke(entry);
             }
         }
 
@@ -282,6 +309,16 @@ namespace KnowledgeTrackerDesktop.UI.Views
                     font: AppTheme.Fonts.Body,
                     color: AppTheme.PrimaryText);
             }
+
+            if (ShowsOrigin)
+            {
+                AddCaption("Origin");
+                AddValue(
+                    () => OriginKindText,
+                    font: AppTheme.Fonts.Caption,
+                    color: AppTheme.SecondaryText);
+                AddValue(() => OriginLocationText);
+            }
         }
 
         private void AddActions()
@@ -334,6 +371,13 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 buttons.Add((
                     CreateActionButton("Open video", RequestOpenLink, ButtonRole.Secondary),
                     Captions("Open video")));
+            }
+
+            if (ShowsOrigin)
+            {
+                buttons.Add((
+                    CreateActionButton("Open origin", RequestOpenOrigin, ButtonRole.Secondary),
+                    Captions("Open origin")));
             }
 
             actions.Controls.AddRange(buttons.Select(pair => pair.Button).ToArray());

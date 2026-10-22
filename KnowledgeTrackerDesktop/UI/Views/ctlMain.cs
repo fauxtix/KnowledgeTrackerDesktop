@@ -25,6 +25,20 @@ namespace KnowledgeTrackerDesktop.UI.Views
             ("Project A\u2013Z", EntrySortMode.ProjectAscending),
         };
 
+        /// <summary>
+        /// The options of the origin filter. "All origins" shows every
+        /// entry; the rest narrow it down to the kind of source the knowledge
+        /// came from, or to the entries whose origin was never recorded.
+        /// </summary>
+        private static readonly (string Label, OriginFilterOption Option)[] OriginFilterOptions =
+        {
+            ("All origins", OriginFilterOption.All),
+            ("Local folder", OriginFilterOption.LocalFolder),
+            ("Git repository", OriginFilterOption.GitRepository),
+            ("Web page", OriginFilterOption.WebPage),
+            ("Not recorded", OriginFilterOption.NotRecorded),
+        };
+
         private readonly IKnowledgeEntryService _service;
         private readonly INavigationService _navigation;
         private readonly IShellHost _shell;
@@ -35,6 +49,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
         private readonly SfButton _favoritesButton = new();
         private readonly SfButton _tagsButton = new();
         private readonly ComboBoxAdv _projectFilter = new();
+        private readonly ComboBoxAdv _originFilter = new();
         private readonly ComboBoxAdv _sort = new();
         private readonly FlowLayoutPanel _tagsPanel = new();
         private readonly ToolStripDropDown _tagsDropDown = new();
@@ -85,6 +100,8 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _preview.OpenAttachmentRequested += (_, attachment) =>
                 EntryOpenActions.OpenAttachment(attachment);
             _preview.OpenLinkRequested += entry => EntryOpenActions.OpenUrl(entry.YouTubeUrl);
+            _preview.OpenOriginRequested += entry =>
+                EntryOpenActions.OpenProjectOrigin(entry.ProjectOriginKind, entry.ProjectOriginLocation);
 
             Dock = DockStyle.Fill;
             BackColor = AppTheme.Background;
@@ -453,6 +470,31 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 }
             };
 
+            // The origin filter narrows the library by the kind of source the
+            // knowledge came from. Index 0 means "every origin".
+            _originFilter.DropDownStyle = ComboBoxStyle.DropDownList;
+            _originFilter.Width = 190;
+            _originFilter.Height = 44;
+            _originFilter.TextBoxHeight = 40;
+            _originFilter.Font = AppTheme.Fonts.Input;
+            _originFilter.Anchor = AnchorStyles.Left;
+            _originFilter.Margin = new Padding(0, 4, 8, 4);
+            _originFilter.Items.AddRange(
+                OriginFilterOptions
+                    .Select(option => (object)AppLocalization.Translate(option.Label))
+                    .ToArray());
+            AppLocalization.BindComboItems(
+                _originFilter,
+                OriginFilterOptions.Select((option, index) => (index, option.Label)).ToArray());
+            _originFilter.SelectedIndex = 0;
+            _originFilter.SelectedIndexChanged += (_, _) =>
+            {
+                if (!_suppressEvents)
+                {
+                    RebuildList();
+                }
+            };
+
             _sort.DropDownStyle = ComboBoxStyle.DropDownList;
             _sort.Width = 250;
             _sort.Height = 44;
@@ -475,12 +517,14 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
             BuildTagsDropDown();
             var projectFrame = new ComboBoxFrame(_projectFilter, _projectFilter.Width + 4);
+            var originFrame = new ComboBoxFrame(_originFilter, _originFilter.Width + 4);
             var sortFrame = new ComboBoxFrame(_sort, _sort.Width + 4);
 
             bar.Controls.Add(_search);
             bar.Controls.Add(_favoritesButton);
             bar.Controls.Add(_tagsButton);
             bar.Controls.Add(projectFrame);
+            bar.Controls.Add(originFrame);
             bar.Controls.Add(sortFrame);
             return bar;
         }
@@ -740,6 +784,36 @@ namespace KnowledgeTrackerDesktop.UI.Views
             {
                 _pendingProject = _initialRequest.ProjectName.Trim();
             }
+
+            if (_initialRequest.OriginFilter is { } originFilter)
+            {
+                _suppressEvents = true;
+                try
+                {
+                    _originFilter.SelectedIndex = OriginFilterIndex(originFilter);
+                }
+                finally
+                {
+                    _suppressEvents = false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// The index of the origin filter for an option, or 0 when the option
+        /// is not one of the filter options.
+        /// </summary>
+        private static int OriginFilterIndex(OriginFilterOption option)
+        {
+            for (var index = 0; index < OriginFilterOptions.Length; index++)
+            {
+                if (OriginFilterOptions[index].Option == option)
+                {
+                    return index;
+                }
+            }
+
+            return 0;
         }
 
         private void ShowTagsDropDown() =>
@@ -787,7 +861,8 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 _selectedTags,
                 _favoritesOnly,
                 CurrentSortMode(),
-                project);
+                project,
+                CurrentOriginFilter());
 
             // A selection that fell out of the current filter has no card left
             // to represent it, so the preview must not keep showing it.
@@ -810,6 +885,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 card.FavoriteRequested += OnCardFavoriteRequested;
                 card.DeleteRequested += OnCardDeleteRequested;
                 card.DuplicateRequested += OnCardDuplicateRequested;
+                card.OriginOpenRequested += OnCardOriginOpenRequested;
                 _cards.Controls.Add(card);
             }
 
@@ -877,7 +953,8 @@ namespace KnowledgeTrackerDesktop.UI.Views
             !string.IsNullOrWhiteSpace(_search.Text) ||
             _favoritesOnly ||
             _selectedTags.Count > 0 ||
-            _projectFilter.SelectedIndex > 0;
+            _projectFilter.SelectedIndex > 0 ||
+            _originFilter.SelectedIndex > 0;
 
         private string CountText()
         {
@@ -909,6 +986,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 try
                 {
                     _projectFilter.SelectedIndex = 0;
+                    _originFilter.SelectedIndex = 0;
                 }
                 finally
                 {
@@ -931,6 +1009,17 @@ namespace KnowledgeTrackerDesktop.UI.Views
             return index >= 0 && index < SortOptions.Length
                 ? SortOptions[index].Mode
                 : EntrySortMode.DateResolvedDescending;
+        }
+
+        /// <summary>
+        /// The origin filter the user selected in the toolbar.
+        /// </summary>
+        private OriginFilterOption CurrentOriginFilter()
+        {
+            var index = _originFilter.SelectedIndex;
+            return index > 0 && index < OriginFilterOptions.Length
+                ? OriginFilterOptions[index].Option
+                : OriginFilterOption.All;
         }
 
         private void ApplyListState(int filteredCount)
@@ -1122,6 +1211,15 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
         /// <summary>Opens the editor on a copy of the entry the card represents.</summary>
         private void OnCardDuplicateRequested(EntryCard card) => DuplicateEntry(card.Entry);
+
+        /// <summary>
+        /// Opens the source the knowledge came from, without selecting or
+        /// opening the entry itself.
+        /// </summary>
+        private void OnCardOriginOpenRequested(EntryCard card) =>
+            EntryOpenActions.OpenProjectOrigin(
+                card.Entry.ProjectOriginKind,
+                card.Entry.ProjectOriginLocation);
 
         /// <summary>
         /// Opens the editor on a copy of <paramref name="entry"/>: identity and

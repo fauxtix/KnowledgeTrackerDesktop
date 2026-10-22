@@ -113,8 +113,84 @@ namespace KnowledgeTrackerDesktop.Tests.Data
                 await connection.CloseAsync();
             }
 
-            // Non-destructive: the pre-existing table definition is untouched.
-            Assert.Equal(originalColumns, await ReadColumnInfoAsync(db, "KnowledgeEntry"));
+            // Non-destructive: the pre-existing columns are preserved, in the
+            // same order, and the new origin columns are appended after them.
+            Assert.Equal(
+                originalColumns.Concat(new[]
+                {
+                    "ProjectOriginKind:INTEGER:0",
+                    "ProjectOriginLocation:VARCHAR:0",
+                }),
+                await ReadColumnInfoAsync(db, "KnowledgeEntry"));
+        }
+
+        [Fact]
+        public async Task Initialize_Version1Database_AddsProjectOriginColumnsAndKeepsRows()
+        {
+            using var db = new TempDatabase();
+            await CreateVersion1DatabaseAsync(db);
+
+            var connection = db.OpenConnection();
+            try
+            {
+                Assert.Equal(1, await connection.ExecuteScalarAsync<int>("PRAGMA user_version"));
+            }
+            finally
+            {
+                await connection.CloseAsync();
+            }
+
+            await new SchemaMigrator(db.DatabasePath).InitializeAsync();
+
+            // A safety copy of the pre-migration file is always taken.
+            var backupPath = Assert.Single(Directory.GetFiles(db.DirectoryPath, "*.backup.*"));
+
+            connection = db.OpenConnection();
+            try
+            {
+                Assert.Equal(
+                    SchemaMigrator.CurrentVersion,
+                    await connection.ExecuteScalarAsync<int>("PRAGMA user_version"));
+
+                var columns = await connection.QueryAsync<ColumnInfo>(
+                    "PRAGMA table_info(\"KnowledgeEntry\")");
+
+                // The origin columns are appended at the end, so a fresh
+                // database and a migrated one keep the same column order.
+                Assert.Equal("ProjectOriginKind", columns[^2].name);
+                Assert.Equal("ProjectOriginLocation", columns[^1].name);
+                Assert.Equal(0, columns[^2].notnull);
+                Assert.Equal(0, columns[^1].notnull);
+
+                // The existing row survives and the new columns start empty.
+                var row = Assert.Single(await connection.QueryAsync<EntryRow>(
+                    "SELECT \"Title\", \"ProjectOriginKind\", \"ProjectOriginLocation\" " +
+                    "FROM \"KnowledgeEntry\""));
+                Assert.Equal("Legacy entry", row.Title);
+                Assert.Null(row.ProjectOriginKind);
+                Assert.Null(row.ProjectOriginLocation);
+            }
+            finally
+            {
+                await connection.CloseAsync();
+            }
+
+            // The backup keeps the pre-migration state: no origin columns yet.
+            var backup = new SQLiteAsyncConnection(backupPath);
+            try
+            {
+                var backupColumns = await backup.QueryAsync<ColumnInfo>(
+                    "PRAGMA table_info(\"KnowledgeEntry\")");
+                Assert.DoesNotContain(backupColumns, column => column.name == "ProjectOriginKind");
+                Assert.DoesNotContain(backupColumns, column => column.name == "ProjectOriginLocation");
+                Assert.Equal(
+                    1,
+                    await backup.ExecuteScalarAsync<int>("PRAGMA user_version"));
+            }
+            finally
+            {
+                await backup.CloseAsync();
+            }
         }
 
         [Fact]
@@ -682,14 +758,58 @@ namespace KnowledgeTrackerDesktop.Tests.Data
             }
         }
 
-        private static async Task<string> ReadColumnInfoAsync(TempDatabase db, string table)
+        /// <summary>
+        /// Creates a database with the version 1 schema (the one shipped before
+        /// the typed project origin existed) and one entry, so the v1 -&gt; v2
+        /// migration can be exercised.
+        /// </summary>
+        private static async Task CreateVersion1DatabaseAsync(TempDatabase db)
+        {
+            var connection = db.OpenConnection();
+            try
+            {
+                await connection.ExecuteAsync(LegacyKnowledgeEntryDdl);
+                await connection.ExecuteAsync(LegacyStepDdl);
+                await connection.ExecuteAsync(LegacyAttachmentInfoDdl);
+
+                await connection.ExecuteAsync(
+                    "INSERT INTO \"KnowledgeEntry\" " +
+                    "(\"Title\", \"Description\", \"ProjectName\", \"ResolutionSteps\", \"IsFavorite\") " +
+                    "VALUES (?, ?, ?, ?, ?)",
+                    "Legacy entry",
+                    "Legacy description",
+                    "LegacyProject",
+                    "old free-text steps",
+                    1);
+
+                await connection.ExecuteAsync(
+                    "INSERT INTO \"Step\" (\"Description\", \"Order\", \"KnowledgeEntryId\") VALUES (?, ?, ?)",
+                    "first", 1, 1);
+
+                await connection.ExecuteAsync(
+                    "INSERT INTO \"AttachmentInfo\" (\"KnowledgeEntryId\", \"FileName\", \"FilePath\") VALUES (?, ?, ?)",
+                    1, "log.txt", @"C:\temp\log.txt");
+
+                await connection.ExecuteAsync("PRAGMA user_version = 1");
+            }
+            finally
+            {
+                await connection.CloseAsync();
+            }
+        }
+
+        private static async Task<string[]> ReadColumnInfoAsync(TempDatabase db, string table)
         {
             var connection = db.OpenConnection();
             try
             {
                 var rows = await connection.QueryAsync<ColumnInfo>(
                     $"PRAGMA table_info(\"{table}\")");
-                return string.Join("|", rows.Select(r => $"{r.name}:{r.type}:{r.pk}"));
+                // The type is compared case-insensitively: SQLite type affinity
+                // does not care about the casing used in the table definition.
+                return rows
+                    .Select(r => $"{r.name}:{r.type.ToUpperInvariant()}:{r.pk}")
+                    .ToArray();
             }
             finally
             {
@@ -713,6 +833,13 @@ namespace KnowledgeTrackerDesktop.Tests.Data
             public string? Description { get; set; }
             public int Order { get; set; }
             public int KnowledgeEntryId { get; set; }
+        }
+
+        private sealed class EntryRow
+        {
+            public string? Title { get; set; }
+            public int? ProjectOriginKind { get; set; }
+            public string? ProjectOriginLocation { get; set; }
         }
     }
 }

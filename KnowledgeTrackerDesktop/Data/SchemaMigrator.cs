@@ -16,7 +16,19 @@ namespace KnowledgeTrackerDesktop.Data
         /// Increment only when a real schema change is introduced together with
         /// its migration and tests.
         /// </summary>
-        public const int CurrentVersion = 1;
+        /// <remarks>
+        /// History:
+        /// <list type="bullet">
+        /// <item>1 — initial schema (KnowledgeEntry, Step, AttachmentInfo).</item>
+        /// <item>2 — the typed project origin: the KnowledgeEntry table gains the
+        /// nullable columns <c>ProjectOriginKind</c> (INTEGER) and
+        /// <c>ProjectOriginLocation</c> (VARCHAR). The migration is performed by
+        /// the additive <see cref="SQLiteAsyncConnection.CreateTableAsync{T}"/>,
+        /// which appends the missing columns to the existing table and keeps
+        /// every row, so no raw DDL is required.</item>
+        /// </list>
+        /// </remarks>
+        public const int CurrentVersion = 2;
 
         private readonly DatabasePath _databasePath;
 

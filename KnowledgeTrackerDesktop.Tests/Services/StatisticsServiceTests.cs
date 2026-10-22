@@ -148,6 +148,58 @@ namespace KnowledgeTrackerDesktop.Tests.Services
         }
 
         [Fact]
+        public void Compute_EntriesByOrigin_CountsEachKindAndTheMissingOnes()
+        {
+            var entries = new List<KnowledgeEntry>
+            {
+                new()
+                {
+                    Title = "a",
+                    ProjectOriginKind = ProjectOriginKind.LocalFolder,
+                    ProjectOriginLocation = @"C:\app",
+                },
+                new()
+                {
+                    Title = "b",
+                    ProjectOriginKind = ProjectOriginKind.LocalFolder,
+                    ProjectOriginLocation = @"C:\other",
+                },
+                new()
+                {
+                    Title = "c",
+                    ProjectOriginKind = ProjectOriginKind.GitRepository,
+                    ProjectOriginLocation = "https://github.com/owner/repo",
+                },
+                new() { Title = "d" }, // no origin recorded
+            };
+
+            var summary = StatisticsService.Compute(entries);
+
+            Assert.Equal(
+                new[]
+                {
+                    (ProjectOriginKind.LocalFolder, 2),
+                    (ProjectOriginKind.GitRepository, 1),
+                    (ProjectOriginKind.WebPage, 0),
+                },
+                summary.EntriesByOrigin.Select(o => (o.Kind, o.Count)).ToArray());
+            Assert.Equal(1, summary.EntriesWithoutOrigin);
+        }
+
+        [Fact]
+        public void Compute_EntriesByOrigin_WithoutAnyOrigin_ReportsZeroes()
+        {
+            var summary = StatisticsService.Compute(new List<KnowledgeEntry>
+            {
+                new() { Title = "a" },
+            });
+
+            Assert.Equal(3, summary.EntriesByOrigin.Count);
+            Assert.All(summary.EntriesByOrigin, origin => Assert.Equal(0, origin.Count));
+            Assert.Equal(1, summary.EntriesWithoutOrigin);
+        }
+
+        [Fact]
         public void Compute_EmptyList_ReturnsZeroSummary()
         {
             var summary = StatisticsService.Compute(new List<KnowledgeEntry>());
@@ -160,6 +212,8 @@ namespace KnowledgeTrackerDesktop.Tests.Services
             Assert.All(summary.EntriesByMonth, month => Assert.Equal(0, month.Count));
             Assert.Empty(summary.TopProjects);
             Assert.Empty(summary.TopTags);
+            Assert.Equal(3, summary.EntriesByOrigin.Count);
+            Assert.Equal(0, summary.EntriesWithoutOrigin);
         }
 
         [Fact]

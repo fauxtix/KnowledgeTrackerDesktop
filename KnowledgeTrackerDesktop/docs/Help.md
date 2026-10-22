@@ -22,6 +22,7 @@ Na vista **Biblioteca** consegue:
 - **Editar registos** - Atualizar a informação de registos existentes.
 - **Eliminar registos** - Remover registos que já não são necessários.
 - **Pesquisar e filtrar** - Localizar rapidamente registos por palavras-chave, categoria ou etiquetas.
+- **Filtrar por origem** - Mostrar apenas os registos cujo conhecimento veio de uma pasta local, de um repositório Git ou de uma página web (ou os que ainda não têm origem registada).
 
 ### 3.2 Editor de registos
 
@@ -30,12 +31,13 @@ Ao criar ou editar um registo, tem acesso a campos para organizar a informação
 - **Título / Informação principal** - Identificação clara do registo.
 - **Descrição/Notas** - Espaço para detalhar o conhecimento com contexto.
 - **Categoria** - Agrupar registos por tema.
+- **Origem** - Registar de onde veio o conhecimento: uma pasta local, um repositório Git ou uma página web, juntamente com a localização (caminho absoluto para a pasta, URL http(s) para os restantes).
 - **Etiquetas (Tags)** - Adicionar etiquetas para facilitar a pesquisa transversal.
 - **Data/Metadados** - Informação adicional associada ao registo.
 
 ### 3.3 Estatísticas
 
-A vista **Estatísticas** permite ter uma visão geral da sua biblioteca, incluindo contagens por categoria/etiquetas e distribuição dos registos.
+A vista **Estatísticas** permite ter uma visão geral da sua biblioteca, incluindo contagens por categoria/etiquetas, distribuição por origem e distribuição dos registos.
 
 ### 3.4 Navegação
 

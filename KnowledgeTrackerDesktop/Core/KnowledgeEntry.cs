@@ -39,5 +39,21 @@ namespace KnowledgeTrackerDesktop.Core
 
         [Ignore]
         public List<AttachmentInfo> Attachments { get; set; } = new();
+
+        // Appended at the end of the class on purpose: SQLite can only add
+        // columns at the end of a table, so a fresh database and a migrated
+        // one must declare the columns in the same order.
+
+        /// <summary>
+        /// Where the knowledge came from, or null when it was not recorded.
+        /// </summary>
+        public ProjectOriginKind? ProjectOriginKind { get; set; }
+
+        /// <summary>
+        /// The origin location: an absolute folder path for
+        /// <see cref="Core.ProjectOriginKind.LocalFolder"/>, an http(s) URL
+        /// for the other kinds.
+        /// </summary>
+        public string? ProjectOriginLocation { get; set; }
     }
 }

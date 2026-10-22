@@ -205,8 +205,19 @@ Columns:
 * `CodeSnippet`
 * `IsFavorite`
 * `YouTubeUrl`
+* `ProjectOriginKind`
+* `ProjectOriginLocation`
 
 `Attachments` and `Steps` are `[Ignore]` properties and are not SQLite columns.
+
+`ProjectOriginKind` and `ProjectOriginLocation` are nullable and record where
+the knowledge came from (a local folder, a git repository or a web page). A
+null kind means "the origin was not recorded". The location is interpreted
+according to the kind: an absolute path for a local folder, an http(s) URL for
+the other two.
+
+Both columns are appended at the end of the model, so a fresh database and a
+migrated one keep the same column order.
 
 ### Step
 
@@ -277,6 +288,7 @@ Users can:
 * search
 * filter by tags
 * filter favorites
+* filter by origin kind
 * sort entries
 * open an entry
 * create an entry

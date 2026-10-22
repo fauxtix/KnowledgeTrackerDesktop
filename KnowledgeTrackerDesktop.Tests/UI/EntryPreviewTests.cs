@@ -588,6 +588,75 @@ namespace KnowledgeTrackerDesktop.Tests.UI
                 $"primary height {primary.Height} should exceed secondary {secondary.Height}");
         }
 
+        [Fact]
+        public void TheOriginIsRenderedWithItsKindAndFullLocation()
+        {
+            using var preview = new ctlEntryPreview();
+
+            preview.SetEntry(new KnowledgeEntry
+            {
+                Id = 1,
+                Title = "Sourced entry",
+                ProjectOriginKind = ProjectOriginKind.GitRepository,
+                ProjectOriginLocation = "https://github.com/owner/repo",
+            });
+
+            Assert.True(preview.ShowsOrigin);
+            Assert.Equal("Git repository", preview.OriginKindText);
+            Assert.Equal("https://github.com/owner/repo", preview.OriginLocationText);
+
+            var captions = Descendants(preview).OfType<Label>().Select(label => label.Text).ToArray();
+            Assert.Contains("Origin", captions);
+            Assert.Contains("https://github.com/owner/repo", captions);
+        }
+
+        [Fact]
+        public void TheOriginActionIsOfferedOnlyWhenThereIsAnOrigin()
+        {
+            using var preview = new ctlEntryPreview();
+            var entry = new KnowledgeEntry
+            {
+                Id = 1,
+                Title = "Sourced entry",
+                ProjectOriginKind = ProjectOriginKind.LocalFolder,
+                ProjectOriginLocation = @"C:\projects\app",
+            };
+            var raised = new List<KnowledgeEntry>();
+            preview.OpenOriginRequested += raised.Add;
+
+            preview.SetEntry(entry);
+
+            Assert.True(preview.ShowsOrigin);
+            Assert.Contains(
+                Descendants(preview).OfType<SfButton>(),
+                button => Equals(button.Tag, "Open origin"));
+
+            InvokeOnClick(Descendants(preview)
+                .OfType<SfButton>()
+                .Single(button => Equals(button.Tag, "Open origin")));
+
+            Assert.Equal(new[] { entry }, raised);
+
+            preview.SetEntry(new KnowledgeEntry { Id = 2, Title = "No origin" });
+
+            Assert.False(preview.ShowsOrigin);
+            Assert.DoesNotContain(
+                Descendants(preview).OfType<SfButton>(),
+                button => Equals(button.Tag, "Open origin"));
+        }
+
+        [Fact]
+        public void TheOriginIntentIsNotRaisedWithoutAnEntry()
+        {
+            using var preview = new ctlEntryPreview();
+            var raised = 0;
+            preview.OpenOriginRequested += _ => raised++;
+
+            preview.RequestOpenOrigin();
+
+            Assert.Equal(0, raised);
+        }
+
         private static Label LabelWithText(Control root, string text) =>
             Descendants(root).OfType<Label>().Single(label => label.Text == text);
 

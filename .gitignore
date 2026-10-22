@@ -14,3 +14,4 @@
 
 # Working/handoff note for the change in progress (must never be committed)
 /RUNTIME_ERROR_HANDOFF.md
+**/TestResults/

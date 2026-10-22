@@ -70,7 +70,47 @@ namespace KnowledgeTrackerDesktop.Services
                     "The YouTube URL must be a valid http(s) link."));
             }
 
+            ValidateProjectOrigin(entry, errors);
+
             return errors;
+        }
+
+        /// <summary>
+        /// The origin is optional, but its two parts go together: a location
+        /// without a kind cannot be interpreted (is it a folder or a link?) and
+        /// a kind without a location points nowhere.
+        /// </summary>
+        private static void ValidateProjectOrigin(
+            KnowledgeEntry entry,
+            List<EntryValidationError> errors)
+        {
+            var kind = entry.ProjectOriginKind;
+            var location = entry.ProjectOriginLocation?.Trim();
+
+            if (kind is null)
+            {
+                if (!string.IsNullOrWhiteSpace(location))
+                {
+                    errors.Add(new EntryValidationError(
+                        EntryField.OriginKind,
+                        "Select the origin type for the recorded location."));
+                }
+
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(location))
+            {
+                errors.Add(new EntryValidationError(
+                    EntryField.OriginLocation,
+                    "The origin location is required when an origin type is selected."));
+                return;
+            }
+
+            if (!ProjectOriginRules.TryValidate(kind.Value, location, out var message))
+            {
+                errors.Add(new EntryValidationError(EntryField.OriginLocation, message));
+            }
         }
 
         /// <summary>

@@ -20,7 +20,17 @@ namespace KnowledgeTrackerDesktop.Services
         /// Format version, independent from the application version. Readers
         /// ignore files newer than they understand instead of guessing.
         /// </summary>
-        public const int CurrentFormatVersion = 1;
+        /// <remarks>
+        /// History:
+        /// <list type="bullet">
+        /// <item>1 — the original document.</item>
+        /// <item>2 — the entries carry the typed project origin
+        /// (<c>ProjectOriginKind</c> and <c>ProjectOriginLocation</c>). A
+        /// version 1 file still imports: it simply has no origin, which is
+        /// the same as "not recorded".</item>
+        /// </list>
+        /// </remarks>
+        public const int CurrentFormatVersion = 2;
 
         public int FormatVersion { get; set; } = CurrentFormatVersion;
 
@@ -33,6 +43,9 @@ namespace KnowledgeTrackerDesktop.Services
             WriteIndented = true,
             Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            // The origin kind is written as its name ("LocalFolder") so the
+            // file stays readable and a script can consume it.
+            Converters = { new JsonStringEnumConverter() },
         };
 
         public string ToJson() => JsonSerializer.Serialize(this, Options);
@@ -109,6 +122,8 @@ namespace KnowledgeTrackerDesktop.Services
                 CodeSnippet = document.CodeSnippet,
                 IsFavorite = document.IsFavorite,
                 YouTubeUrl = document.YouTubeUrl,
+                ProjectOriginKind = document.ProjectOriginKind,
+                ProjectOriginLocation = document.ProjectOriginLocation,
             };
 
             var order = 0;
@@ -160,6 +175,18 @@ namespace KnowledgeTrackerDesktop.Services
 
         public string? YouTubeUrl { get; set; }
 
+        /// <summary>
+        /// The kind of source the knowledge came from, or null when the origin
+        /// was not recorded. Written as its name, not as a number.
+        /// </summary>
+        public ProjectOriginKind? ProjectOriginKind { get; set; }
+
+        /// <summary>
+        /// The origin location: an absolute folder path for a local folder, an
+        /// http(s) URL for a repository or a web page.
+        /// </summary>
+        public string? ProjectOriginLocation { get; set; }
+
         public List<StepDocument> Steps { get; set; } = new();
 
         public List<AttachmentDocument> Attachments { get; set; } = new();
@@ -181,6 +208,8 @@ namespace KnowledgeTrackerDesktop.Services
                 CodeSnippet = entry.CodeSnippet,
                 IsFavorite = entry.IsFavorite,
                 YouTubeUrl = entry.YouTubeUrl,
+                ProjectOriginKind = entry.ProjectOriginKind,
+                ProjectOriginLocation = entry.ProjectOriginLocation,
             };
 
             foreach (var step in entry.Steps ?? new List<Step>())

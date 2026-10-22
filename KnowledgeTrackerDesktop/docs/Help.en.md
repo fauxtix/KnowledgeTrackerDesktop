@@ -23,10 +23,11 @@ In the **Library** view you have:
 - **Export** - Export the entire current library to a JSON file.
 
 #### Filters and search
-- **Search** - Filter entries by the text you type.
+- **Search** - Filter entries by the text you type (the origin location is included in the search).
 - **Favorites** - Show only entries marked as favorites.
 - **Tags** - Filter by one or more tags.
 - **Project** - Filter entries by project.
+- **Origin** - Filter entries by where the knowledge came from: a local folder, a git repository, a web page, or the entries whose origin was never recorded.
 - **Sort** - Sort by newest/oldest, title, or project.
 
 #### Card list
@@ -34,6 +35,7 @@ Each entry is displayed as a card. From the card or its action menu you can (dep
 
 - **Open/select** - Click the card to view it in the preview panel on the right.
 - **Add/Remove from favorites** - Mark or unmark the entry as favorite.
+- **Open origin** - When the entry records an origin, the card shows it as a link; clicking it opens the source without opening the entry.
 - **Duplicate entry** - Create a copy of the selected entry to quickly build a new one based on it.
 - **Delete entry** - Remove the entry from the library (this action asks for confirmation).
 
@@ -45,6 +47,7 @@ When you select a card, the right-hand preview panel shows a read-only view of t
 - **View code** - Open a preview of the code snippet associated with the entry.
 - **View attachments** - Open the gallery of attachments/images associated with the entry.
 - **Open link** - If a YouTube link is present, open it in your browser.
+- **Open origin** - If the entry records an origin, open the folder or the link it points to.
 
 ### 3.3 Entry Editor (Create/Edit)
 
@@ -59,6 +62,7 @@ When creating or editing an entry, you can fill in several fields:
 - **Code snippet** - Add a formatted code snippet for future reference.
 - **Attachments / Images** - Add files/images to the entry. They can be viewed in the integrated gallery.
 - **YouTube link** - Associate a reference video if applicable.
+- **Origin** - Record where the knowledge came from: a local folder, a git repository or a web page, together with its location. The location is an absolute folder path for a local folder and an http(s) URL for the other two.
 - **Comments** - Additional notes space.
 
 ### 3.4 Import and Export
@@ -68,7 +72,7 @@ When creating or editing an entry, you can fill in several fields:
 
 ### 3.5 Statistics
 
-The **Statistics** view gives you an overview of your library, with totals, distribution by project/tags, and other aggregated information to better understand your knowledge collection.
+The **Statistics** view gives you an overview of your library, with totals, distribution by project/tags, distribution by origin, and other aggregated information to better understand your knowledge collection. Clicking a project, a tag or an origin kind takes you to the Library with that filter already applied.
 
 ## 4. Tips & Tricks
 
@@ -94,6 +98,12 @@ A: The app uses a local database (`knowledge.db3`). In Debug mode it's stored in
 
 **Q: Can I open attachments/images and code from the preview?**  
 A: Yes. If the entry has code or attachments, the preview panel shows buttons to view them (code preview or attachments/images gallery).
+
+**Q: What is the difference between "Project" and "Origin"?**  
+A: The project is the name of the thing the entry documents. The origin is where the knowledge itself came from: a local folder, a git repository or a web page. Both are optional and the origin is recorded per entry, not per project.
+
+**Q: What happens if the recorded origin no longer exists?**  
+A: The origin is a record, not a guarantee. The folder may have been moved or the page removed, so opening it reports the missing target instead of failing silently. You can then correct the location in the editor.
 
 **Q: Can I open this help without using the menu?**  
 A: Yes, just press **F1**.

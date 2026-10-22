@@ -23,10 +23,11 @@ Na vista **Biblioteca** tem à disposição:
 - **Exportar** - Exporta toda a biblioteca atual para um ficheiro JSON.
 
 #### Filtros e pesquisa
-- **Pesquisa** - Filtra os registos pelo texto introduzido.
+- **Pesquisa** - Filtra os registos pelo texto introduzido (a localização da origem também é pesquisada).
 - **Favoritos** - Mostra apenas os registos marcados como favoritos.
 - **Etiquetas** - Filtra por uma ou mais etiquetas.
 - **Projeto** - Filtra os registos por projeto.
+- **Origem** - Filtra os registos pela origem do conhecimento: pasta local, repositório Git, página web ou registos sem origem registada.
 - **Ordenação** - Permite ordenar por mais recentes/mais antigos, título ou projeto.
 
 #### Lista de cartões
@@ -34,6 +35,7 @@ Cada registo aparece sob a forma de cartão. A partir do cartão ou do seu menu 
 
 - **Abrir/selecionar** - Clicar no cartão para o visualizar no painel de pré-visualização à direita.
 - **Marcar/Desmarcar como favorito** - Adicionar ou remover o registo dos favoritos.
+- **Abrir origem** - Quando o registo tem origem registada, o cartão mostra-a como ligação; clicar abre a fonte sem abrir o registo.
 - **Duplicar registo** - Cria uma cópia do registo selecionado para facilitar a criação de um novo com base no existente.
 - **Eliminar registo** - Remove o registo da biblioteca (esta ação pede confirmação).
 
@@ -45,6 +47,7 @@ Ao selecionar um cartão, o painel à direita mostra uma pré-visualização só
 - **Ver código** - Abre a pré-visualização do excerto de código associado ao registo.
 - **Ver anexos** - Abre a galeria de anexos/imagens associados ao registo.
 - **Abrir ligação** - Se existir uma ligação do YouTube, permite abri-la no browser.
+- **Abrir origem** - Se o registo tiver origem registada, abre a pasta ou a ligação para onde aponta.
 
 ### 3.3 Editor de registos (Criar/Editar)
 
@@ -59,6 +62,7 @@ Ao criar ou editar um registo tem acesso a diversos campos para organizar a info
 - **Excerto de código** - Adicionar código com formatação para consulta futura.
 - **Anexos / Imagens** - Adicionar ficheiros/imagens ao registo. Podem ser visualizados na galeria integrada.
 - **Ligação YouTube** - Associar um vídeo de referência (se aplicável).
+- **Origem** - Registar de onde veio o conhecimento: uma pasta local, um repositório Git ou uma página web, juntamente com a localização. A localização é um caminho absoluto de pasta para uma pasta local e um URL http(s) para os restantes.
 - **Comentários** - Espaço para notas adicionais.
 
 ### 3.4 Importar e Exportar
@@ -68,7 +72,7 @@ Ao criar ou editar um registo tem acesso a diversos campos para organizar a info
 
 ### 3.5 Estatísticas
 
-A vista **Estatísticas** apresenta uma visão geral da sua biblioteca, com totais, distribuição por projeto/etiquetas e outras informações agregadas para perceber melhor a sua coleção de conhecimento.
+A vista **Estatísticas** apresenta uma visão geral da sua biblioteca, com totais, distribuição por projeto/etiquetas, distribuição por origem e outras informações agregadas para perceber melhor a sua coleção de conhecimento. Clicar num projeto, numa etiqueta ou num tipo de origem leva-o à Biblioteca com o filtro correspondente já aplicado.
 
 ## 4. Dicas e truques
 
@@ -94,6 +98,12 @@ R: A aplicação utiliza uma base de dados local (`knowledge.db3`). Em modo Debu
 
 **P: Posso abrir anexos/imagens e código a partir da pré-visualização?**  
 R: Sim. Se o registo tiver código ou anexos, o painel de pré-visualização apresenta botões para os visualizar (pré-visualização de código ou galeria de imagens/anexos).
+
+**P: Qual a diferença entre "Projeto" e "Origem"?**  
+R: O projeto é o nome da coisa que o registo documenta. A origem é de onde veio o conhecimento em si: uma pasta local, um repositório Git ou uma página web. Ambos são opcionais e a origem é registada por entrada, não por projeto.
+
+**P: O que acontece se a origem registada já não existir?**  
+R: A origem é um registo, não uma garantia. A pasta pode ter sido movida ou a página removida, por isso ao abrir é indicado o alvo em falta em vez de falhar em silêncio. Pode então corrigir a localização no editor.
 
 **P: Posso abrir esta ajuda sem usar o menu?**  
 R: Sim, basta premir **F1**.

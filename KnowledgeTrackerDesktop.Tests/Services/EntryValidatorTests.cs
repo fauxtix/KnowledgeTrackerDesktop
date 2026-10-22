@@ -182,6 +182,103 @@ namespace KnowledgeTrackerDesktop.Tests.Services
         }
 
         [Fact]
+        public void Validate_MissingOrigin_IsAccepted()
+        {
+            var entry = CompleteEntry();
+            entry.ProjectOriginKind = null;
+            entry.ProjectOriginLocation = null;
+
+            Assert.Empty(EntryValidator.Validate(entry));
+        }
+
+        [Fact]
+        public void Validate_OriginWithKindAndLocation_IsAccepted()
+        {
+            var entry = CompleteEntry();
+            entry.ProjectOriginKind = ProjectOriginKind.LocalFolder;
+            entry.ProjectOriginLocation = @"C:\NewProjects\KnowledgeTrackerDesktop";
+
+            Assert.Empty(EntryValidator.Validate(entry));
+        }
+
+        [Fact]
+        public void Validate_OriginKindWithoutLocation_ReportsLocationError()
+        {
+            var entry = CompleteEntry();
+            entry.ProjectOriginKind = ProjectOriginKind.GitRepository;
+            entry.ProjectOriginLocation = "   ";
+
+            var error = Assert.Single(EntryValidator.Validate(entry));
+
+            Assert.Equal(EntryField.OriginLocation, error.Field);
+            Assert.Equal(
+                "The origin location is required when an origin type is selected.",
+                error.Message);
+        }
+
+        [Fact]
+        public void Validate_OriginLocationWithoutKind_ReportsKindError()
+        {
+            var entry = CompleteEntry();
+            entry.ProjectOriginKind = null;
+            entry.ProjectOriginLocation = @"C:\NewProjects\KnowledgeTrackerDesktop";
+
+            var error = Assert.Single(EntryValidator.Validate(entry));
+
+            Assert.Equal(EntryField.OriginKind, error.Field);
+            Assert.Equal(
+                "Select the origin type for the recorded location.",
+                error.Message);
+        }
+
+        [Theory]
+        [InlineData("relative/folder")]
+        [InlineData("https://github.com/owner/repo")]
+        public void Validate_LocalFolderWithRelativePath_ReportsLocationError(string location)
+        {
+            var entry = CompleteEntry();
+            entry.ProjectOriginKind = ProjectOriginKind.LocalFolder;
+            entry.ProjectOriginLocation = location;
+
+            var error = Assert.Single(EntryValidator.Validate(entry));
+
+            Assert.Equal(EntryField.OriginLocation, error.Field);
+            Assert.Equal(
+                "The origin location must be an absolute folder path.",
+                error.Message);
+        }
+
+        [Theory]
+        [InlineData("git@github.com:owner/repo.git")]
+        [InlineData("owner/repo")]
+        [InlineData("ftp://example.com/repo")]
+        public void Validate_GitRepositoryWithNonHttpUrl_ReportsLocationError(string location)
+        {
+            var entry = CompleteEntry();
+            entry.ProjectOriginKind = ProjectOriginKind.GitRepository;
+            entry.ProjectOriginLocation = location;
+
+            var error = Assert.Single(EntryValidator.Validate(entry));
+
+            Assert.Equal(EntryField.OriginLocation, error.Field);
+            Assert.Equal(
+                "The repository URL must be a valid http(s) link.",
+                error.Message);
+        }
+
+        [Theory]
+        [InlineData("https://stackoverflow.com/questions/1")]
+        [InlineData("http://example.com/page")]
+        public void Validate_WebPageWithHttpUrl_IsAccepted(string location)
+        {
+            var entry = CompleteEntry();
+            entry.ProjectOriginKind = ProjectOriginKind.WebPage;
+            entry.ProjectOriginLocation = location;
+
+            Assert.Empty(EntryValidator.Validate(entry));
+        }
+
+        [Fact]
         public void Validate_EmptyEntry_ReportsEveryRuleInFieldOrder()
         {
             var errors = EntryValidator.Validate(new KnowledgeEntry());

@@ -76,5 +76,59 @@ namespace KnowledgeTrackerDesktop.UI.Views
                     MessageBoxIcon.Warning);
             }
         }
+
+        /// <summary>
+        /// Opens the recorded project origin: the file explorer for a local
+        /// folder, the browser for a repository or a web page. The location is
+        /// a record, not a guarantee, so a folder that was moved or deleted is
+        /// reported instead of being silently ignored.
+        /// </summary>
+        public static void OpenProjectOrigin(ProjectOriginKind? kind, string? location)
+        {
+            if (kind is null || string.IsNullOrWhiteSpace(location))
+            {
+                return;
+            }
+
+            var target = location.Trim();
+
+            if (kind == ProjectOriginKind.LocalFolder)
+            {
+                OpenLocalFolder(target);
+                return;
+            }
+
+            OpenUrl(target);
+        }
+
+        private static void OpenLocalFolder(string path)
+        {
+            if (!Directory.Exists(path))
+            {
+                MessageBox.Show(
+                    string.Format(
+                        AppLocalization.Culture,
+                        AppLocalization.Translate("The folder could not be found at the recorded location:\r\n\r\n{0}"),
+                        path),
+                    AppLocalization.Translate("Origin"),
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+
+            try
+            {
+                Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+                MessageBox.Show(
+                    AppLocalization.Translate("The folder could not be opened."),
+                    AppLocalization.Translate("Origin"),
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+            }
+        }
     }
 }

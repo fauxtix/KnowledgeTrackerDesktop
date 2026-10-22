@@ -114,6 +114,33 @@ namespace KnowledgeTrackerDesktop.UI
             ["A description is required."] = "É necessário indicar uma descrição.",
             ["The YouTube URL must be a valid http(s) link."] =
                 "O URL do YouTube tem de ser uma ligação http(s) válida.",
+            ["Origin"] = "Origem",
+            ["Origins"] = "Origens",
+            ["No origins yet."] = "Ainda não há origens.",
+            ["Origin type"] = "Tipo de origem",
+            ["Origin location"] = "Localização da origem",
+            ["All origins"] = "Todas as origens",
+            ["Local folder"] = "Pasta local",
+            ["Git repository"] = "Repositório Git",
+            ["Web page"] = "Página web",
+            ["Not recorded"] = "Não registada",
+            ["Open origin"] = "Abrir origem",
+            ["Browse..."] = "Procurar...",
+            ["Select the origin folder"] = "Selecione a pasta de origem",
+            ["The origin location is required when an origin type is selected."] =
+                "É necessário indicar a localização da origem quando é selecionado um tipo de origem.",
+            ["Select the origin type for the recorded location."] =
+                "Selecione o tipo de origem para a localização registada.",
+            ["The origin location must be an absolute folder path."] =
+                "A localização da origem tem de ser o caminho completo de uma pasta.",
+            ["The repository URL must be a valid http(s) link."] =
+                "O URL do repositório tem de ser uma ligação http(s) válida.",
+            ["The page URL must be a valid http(s) link."] =
+                "O URL da página tem de ser uma ligação http(s) válida.",
+            ["The origin type is not supported."] = "O tipo de origem não é suportado.",
+            ["The folder could not be found at the recorded location:\r\n\r\n{0}"] =
+                "Não foi possível encontrar a pasta na localização registada:\r\n\r\n{0}",
+            ["The folder could not be opened."] = "Não foi possível abrir a pasta.",
             ["The knowledge entry could not be saved. Please try again."] =
                 "Não foi possível guardar a entrada. Tente novamente.",
             ["Discard unsaved changes?"] = "Descartar as alterações não guardadas?",

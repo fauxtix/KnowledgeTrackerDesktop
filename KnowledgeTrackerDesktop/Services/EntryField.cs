@@ -13,5 +13,7 @@ namespace KnowledgeTrackerDesktop.Services
         Tags,
         Description,
         YouTubeUrl,
+        OriginKind,
+        OriginLocation,
     }
 }

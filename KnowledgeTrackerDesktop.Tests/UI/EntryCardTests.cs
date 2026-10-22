@@ -280,6 +280,67 @@ namespace KnowledgeTrackerDesktop.Tests.UI
             Assert.True(tagFlow.WrapContents);
         }
 
+        [Fact]
+        public void CardShowsTheOriginCaptionAndAShortLocation()
+        {
+            using var card = new EntryCard(new KnowledgeEntry
+            {
+                Id = 40,
+                Title = "Sourced card",
+                ProjectOriginKind = ProjectOriginKind.GitRepository,
+                ProjectOriginLocation = "https://github.com/owner/repo",
+            });
+
+            var texts = FindControls(card).OfType<Label>().Select(label => label.Text).ToArray();
+
+            Assert.Contains("Origin", texts);
+            // The card shows a short form; the full location lives in the preview.
+            Assert.Contains("owner/repo", texts);
+            Assert.DoesNotContain("https://github.com/owner/repo", texts);
+        }
+
+        [Fact]
+        public void CardWithoutOrigin_ShowsNoOriginCaption()
+        {
+            using var card = new EntryCard(new KnowledgeEntry
+            {
+                Id = 41,
+                Title = "No origin",
+            });
+
+            var texts = FindControls(card).OfType<Label>().Select(label => label.Text).ToArray();
+
+            Assert.DoesNotContain("Origin", texts);
+        }
+
+        [Fact]
+        public void OriginAffordanceDoesNotSelectOrOpenAndRaisesOriginOpen()
+        {
+            using var card = new EntryCard(new KnowledgeEntry
+            {
+                Id = 42,
+                Title = "Open the origin",
+                ProjectOriginKind = ProjectOriginKind.LocalFolder,
+                ProjectOriginLocation = @"C:\projects\app",
+            });
+            var selected = false;
+            var opened = false;
+            var originOpened = false;
+            card.Selected += _ => selected = true;
+            card.OpenRequested += _ => opened = true;
+            card.OriginOpenRequested += _ => originOpened = true;
+            var link = FindControls(card)
+                .OfType<Label>()
+                .Single(control => control.AccessibleName == "Open origin");
+
+            InvokeMouseDown(link, MouseButtons.Left);
+            InvokeOnClick(link);
+
+            Assert.False(selected);
+            Assert.False(opened);
+            Assert.True(originOpened);
+        }
+
         private static IEnumerable<Control> FindControls(Control root)
         {
             foreach (Control child in root.Controls)

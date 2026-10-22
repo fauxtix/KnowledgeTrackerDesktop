@@ -1,3 +1,5 @@
+using KnowledgeTrackerDesktop.Core;
+
 namespace KnowledgeTrackerDesktop.UI.Navigation
 {
     /// <summary>
@@ -5,5 +7,8 @@ namespace KnowledgeTrackerDesktop.UI.Navigation
     /// screen. Search, sorting and in-session filter changes remain in the
     /// Library view itself.
     /// </summary>
-    public sealed record LibraryNavigationRequest(string? ProjectName = null, string? Tag = null);
+    public sealed record LibraryNavigationRequest(
+        string? ProjectName = null,
+        string? Tag = null,
+        OriginFilterOption? OriginFilter = null);
 }

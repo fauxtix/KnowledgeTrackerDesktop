@@ -57,6 +57,8 @@ namespace KnowledgeTrackerDesktop.Tests.Core
                 ("CodeSnippet", "VARCHAR"),
                 ("IsFavorite", "INTEGER"),
                 ("YouTubeUrl", "VARCHAR"),
+                ("ProjectOriginKind", "INTEGER"),
+                ("ProjectOriginLocation", "VARCHAR"),
             };
 
             Assert.Equal(expected, Normalized(columns));
@@ -146,6 +148,39 @@ namespace KnowledgeTrackerDesktop.Tests.Core
 
             Assert.Empty(loaded.Steps);
             Assert.Empty(loaded.Attachments);
+        }
+
+        [Fact]
+        public void KnowledgeEntry_RoundTrip_PreservesProjectOrigin()
+        {
+            _connection.CreateTable<KnowledgeEntry>();
+
+            var entry = new KnowledgeEntry
+            {
+                Title = "Entry title",
+                ProjectName = "KnowledgeTracker",
+                ProjectOriginKind = ProjectOriginKind.GitRepository,
+                ProjectOriginLocation = "https://github.com/owner/repo",
+            };
+
+            _connection.Insert(entry);
+            var loaded = _connection.Table<KnowledgeEntry>().Single();
+
+            Assert.Equal(ProjectOriginKind.GitRepository, loaded.ProjectOriginKind);
+            Assert.Equal("https://github.com/owner/repo", loaded.ProjectOriginLocation);
+        }
+
+        [Fact]
+        public void KnowledgeEntry_RoundTrip_PreservesMissingProjectOrigin()
+        {
+            _connection.CreateTable<KnowledgeEntry>();
+
+            _connection.Insert(new KnowledgeEntry { Title = "Entry title" });
+            var loaded = _connection.Table<KnowledgeEntry>().Single();
+
+            // A null kind means "the origin was not recorded".
+            Assert.Null(loaded.ProjectOriginKind);
+            Assert.Null(loaded.ProjectOriginLocation);
         }
 
         [Fact]

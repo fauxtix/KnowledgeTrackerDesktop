@@ -234,6 +234,142 @@ namespace KnowledgeTrackerDesktop.Tests.Services
             Assert.Equal(1, await _service.CountDuplicatesAsync(source));
         }
 
+        [Fact]
+        public async Task ExportAsync_CapturesTheProjectOrigin()
+        {
+            var entry = CreateValidEntry("With origin");
+            entry.ProjectOriginKind = ProjectOriginKind.GitRepository;
+            entry.ProjectOriginLocation = "https://github.com/owner/repo";
+            await _service.SaveAsync(entry);
+
+            var document = await _service.ExportAsync();
+
+            var exported = Assert.Single(document.Entries);
+            Assert.Equal(ProjectOriginKind.GitRepository, exported.ProjectOriginKind);
+            Assert.Equal("https://github.com/owner/repo", exported.ProjectOriginLocation);
+        }
+
+        [Fact]
+        public async Task ExportAsync_WithoutOrigin_LeavesTheOriginEmpty()
+        {
+            await _service.SaveAsync(CreateValidEntry("Without origin"));
+
+            var document = await _service.ExportAsync();
+
+            var exported = Assert.Single(document.Entries);
+            Assert.Null(exported.ProjectOriginKind);
+            Assert.Null(exported.ProjectOriginLocation);
+        }
+
+        [Fact]
+        public void ToJson_WritesTheOriginKindAsAReadableName()
+        {
+            var document = new KnowledgeExport();
+            document.Entries.Add(EntryDocument.FromEntry(new KnowledgeEntry
+            {
+                Title = "Readable",
+                ProjectOriginKind = ProjectOriginKind.LocalFolder,
+                ProjectOriginLocation = @"C:\projects\app",
+            }));
+
+            var json = document.ToJson();
+
+            Assert.Contains("\"ProjectOriginKind\": \"LocalFolder\"", json);
+            Assert.Contains("\"ProjectOriginLocation\": \"C:\\\\projects\\\\app\"", json);
+        }
+
+        [Fact]
+        public void ToJson_WithoutOrigin_OmitsTheOriginFields()
+        {
+            var document = new KnowledgeExport();
+            document.Entries.Add(EntryDocument.FromEntry(new KnowledgeEntry { Title = "Plain" }));
+
+            var json = document.ToJson();
+
+            Assert.DoesNotContain("ProjectOriginKind", json);
+            Assert.DoesNotContain("ProjectOriginLocation", json);
+        }
+
+        [Fact]
+        public void JsonRoundTrip_PreservesTheProjectOrigin()
+        {
+            var document = new KnowledgeExport();
+            document.Entries.Add(EntryDocument.FromEntry(new KnowledgeEntry
+            {
+                Title = "Round trip",
+                ProjectOriginKind = ProjectOriginKind.WebPage,
+                ProjectOriginLocation = "https://example.com/page",
+            }));
+
+            var parsed = KnowledgeExport.FromJson(document.ToJson());
+
+            var exported = Assert.Single(parsed.Entries);
+            Assert.Equal(ProjectOriginKind.WebPage, exported.ProjectOriginKind);
+            Assert.Equal("https://example.com/page", exported.ProjectOriginLocation);
+        }
+
+        [Fact]
+        public void FromJson_Version1Document_ImportsWithoutOrigin()
+        {
+            const string legacy = """
+                {
+                  "FormatVersion": 1,
+                  "ExportedAt": "2026-10-01T00:00:00Z",
+                  "Entries": [
+                    {
+                      "Title": "Legacy entry",
+                      "ProjectName": "KnowledgeTracker",
+                      "Technologies": "C#; WinForms",
+                      "DateResolved": "2026-10-01T00:00:00Z",
+                      "Tags": "sqlite",
+                      "Description": "A documented solution."
+                    }
+                  ]
+                }
+                """;
+
+            var parsed = KnowledgeExport.FromJson(legacy);
+
+            var exported = Assert.Single(parsed.Entries);
+            Assert.Equal("Legacy entry", exported.Title);
+            Assert.Null(exported.ProjectOriginKind);
+            Assert.Null(exported.ProjectOriginLocation);
+        }
+
+        [Fact]
+        public async Task ImportAsync_KeepsTheProjectOrigin()
+        {
+            var source = new KnowledgeExport();
+            var document = EntryDocument.FromEntry(CreateValidEntry("Imported origin"));
+            document.ProjectOriginKind = ProjectOriginKind.LocalFolder;
+            document.ProjectOriginLocation = @"C:\projects\app";
+            source.Entries.Add(document);
+
+            var result = await _service.ImportAsync(source, ImportMode.SkipDuplicates);
+
+            Assert.Equal(1, result.Imported);
+
+            var stored = Assert.Single(await _service.GetAllAsync());
+            Assert.Equal(ProjectOriginKind.LocalFolder, stored.ProjectOriginKind);
+            Assert.Equal(@"C:\projects\app", stored.ProjectOriginLocation);
+        }
+
+        [Fact]
+        public async Task ImportAsync_SkipsEntriesWithAnOriginThatBreaksTheRules()
+        {
+            var source = new KnowledgeExport();
+            var document = EntryDocument.FromEntry(CreateValidEntry("Broken origin"));
+            document.ProjectOriginKind = ProjectOriginKind.LocalFolder;
+            document.ProjectOriginLocation = "relative/folder";
+            source.Entries.Add(document);
+            source.Entries.Add(EntryDocument.FromEntry(CreateValidEntry("Valid")));
+
+            var result = await _service.ImportAsync(source, ImportMode.SkipDuplicates);
+
+            Assert.Equal(1, result.Imported);
+            Assert.Equal(1, result.Invalid);
+        }
+
         private static KnowledgeEntry CreateValidEntry(string title) => new()
         {
             Title = title,

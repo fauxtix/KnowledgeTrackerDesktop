@@ -41,6 +41,10 @@ namespace KnowledgeTrackerDesktop.UI.Views
         private readonly TableLayoutPanel _attachments = new();
         private readonly SfButton _openGallery = new();
         private readonly TextBoxExt _comments = new();
+        private readonly ComboBoxAdv _originKind = new();
+        private readonly TextBoxExt _originLocation = new();
+        private readonly SfButton _browseOrigin = new();
+        private readonly SfButton _openOrigin = new();
         private readonly Label _errorLabel = new();
         private AutoComplete? _technologiesAutoComplete;
         private AutoComplete? _tagsAutoComplete;
@@ -56,6 +60,13 @@ namespace KnowledgeTrackerDesktop.UI.Views
         internal Func<string[]?>? FilePicker { get; set; }
 
         /// <summary>
+        /// Overrides the folder dialog used to pick a local origin, so the
+        /// editor can be driven without showing a modal window.
+        /// </summary>
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+        internal Func<string?>? FolderPicker { get; set; }
+
+        /// <summary>
         /// Horizontal padding kept between a tab caption and the header
         /// borders. The strip sizes each header from its own caption
         /// (<c>SizeMode.Normal</c>), so this inset must stay small enough for
@@ -66,6 +77,19 @@ namespace KnowledgeTrackerDesktop.UI.Views
         private TabControlAdv? _editorTabs;
         private SfButton? _saveButton;
         private bool _dirty;
+
+        /// <summary>
+        /// The options of the origin type selector. The first one means "the
+        /// origin was not recorded"; the rest are the kinds of source the
+        /// knowledge can come from.
+        /// </summary>
+        private static readonly (string Label, ProjectOriginKind? Kind)[] OriginKindOptions =
+        {
+            ("Not recorded", null),
+            ("Local folder", ProjectOriginKind.LocalFolder),
+            ("Git repository", ProjectOriginKind.GitRepository),
+            ("Web page", ProjectOriginKind.WebPage),
+        };
 
         public ctlAddEdit(
             IKnowledgeEntryService service,
@@ -191,6 +215,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             // project, technologies, date, tags, favorite) plus description
             // and comments lives on the General tab.
             AddSectionRow(_generalForm, CreateSection("Main information", BuildMainInformationRow()));
+            AddSectionRow(_generalForm, CreateSection("Origin", BuildOriginSection()));
             AddSectionRow(_generalForm, CreateSection("Classification", BuildClassificationRow()));
             AddSectionRow(_generalForm, CreateSection("Description (Markdown)", BuildDescriptionSection()));
             AddSectionRow(_generalForm, CreateSection("Comments", BuildCommentsSection()));
@@ -531,6 +556,87 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
             row.Controls.Add(Field("Title", CreateMetadataInput(_title), rightPad: 8), 0, 0);
             row.Controls.Add(Field("Project", CreateMetadataInput(_project)), 1, 0);
+            return row;
+        }
+
+        /// <summary>
+        /// The typed origin of the knowledge: where it came from. The kind
+        /// decides how the location is read (an absolute folder path or an
+        /// http(s) link), so the browse action is only offered for a local
+        /// folder and the location is disabled when no kind is selected.
+        /// </summary>
+        private Control BuildOriginSection()
+        {
+            _originKind.DropDownStyle = ComboBoxStyle.DropDownList;
+            _originKind.Font = AppTheme.Fonts.Input;
+            _originKind.TextBoxHeight = 26;
+            _originKind.Items.AddRange(
+                OriginKindOptions.Select(option => (object)option.Label).ToArray());
+            AppLocalization.BindComboItems(
+                _originKind,
+                OriginKindOptions.Select((option, index) => (index, option.Label)).ToArray());
+            _originKind.SelectedIndex = 0;
+            _originKind.SelectedIndexChanged += (_, _) =>
+            {
+                UpdateOriginInputs();
+                MarkDirty();
+            };
+
+            _originLocation.Dock = DockStyle.Fill;
+            _originLocation.Multiline = false;
+            _originLocation.TextChanged += (_, _) =>
+            {
+                _openOrigin.Enabled = CurrentOriginKind() is not null &&
+                    !string.IsNullOrWhiteSpace(_originLocation.Text);
+                MarkDirty();
+            };
+
+            AppLocalization.Bind(_browseOrigin, "Browse...");
+            _browseOrigin.AutoSize = false;
+            _browseOrigin.Size = new Size(96, 28);
+            _browseOrigin.Anchor = AnchorStyles.Left;
+            _browseOrigin.Margin = new Padding(8, 0, 0, 0);
+            _browseOrigin.Click += (_, _) => BrowseOriginFolder();
+            ButtonStyler.Apply(_browseOrigin, ButtonRole.Secondary);
+
+            AppLocalization.Bind(_openOrigin, "Open origin");
+            _openOrigin.AutoSize = false;
+            _openOrigin.Size = new Size(110, 28);
+            _openOrigin.Anchor = AnchorStyles.Left;
+            _openOrigin.Margin = new Padding(8, 0, 0, 0);
+            _openOrigin.Click += (_, _) => OpenOrigin();
+            ButtonStyler.Apply(_openOrigin, ButtonRole.Secondary);
+
+            var locationRow = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = 3,
+                RowCount = 1,
+                Margin = Padding.Empty,
+            };
+            locationRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+            locationRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            locationRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            locationRow.Controls.Add(CreateMetadataInput(_originLocation), 0, 0);
+            locationRow.Controls.Add(_browseOrigin, 1, 0);
+            locationRow.Controls.Add(_openOrigin, 2, 0);
+
+            var row = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = 2,
+                RowCount = 1,
+                Margin = Padding.Empty,
+                Font = AppTheme.Fonts.Caption,
+            };
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30f));
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70f));
+            row.Controls.Add(Field("Origin type", CreateMetadataInput(_originKind), rightPad: 8), 0, 0);
+            row.Controls.Add(Field("Origin location", locationRow), 1, 0);
             return row;
         }
 
@@ -1279,8 +1385,34 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _comments.Text = _entry.Comments ?? string.Empty;
             _openVideo.Enabled = IsHttpUrl(_youtube.Text);
 
+            _originKind.SelectedIndex = OriginKindIndex(_entry.ProjectOriginKind);
+            _originLocation.Text = _entry.ProjectOriginLocation ?? string.Empty;
+            UpdateOriginInputs();
+
             RefreshAttachments();
             _dirty = false;
+        }
+
+        /// <summary>
+        /// The index of the origin type selector for a kind, or 0 when the
+        /// origin was not recorded.
+        /// </summary>
+        private static int OriginKindIndex(ProjectOriginKind? kind)
+        {
+            if (kind is null)
+            {
+                return 0;
+            }
+
+            for (var index = 0; index < OriginKindOptions.Length; index++)
+            {
+                if (OriginKindOptions[index].Kind == kind)
+                {
+                    return index;
+                }
+            }
+
+            return 0;
         }
 
         private void RefreshAttachments()
@@ -1519,6 +1651,75 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
         private void OpenUrl(string? url) => EntryOpenActions.OpenUrl(url);
 
+        private void OpenOrigin() =>
+            EntryOpenActions.OpenProjectOrigin(CurrentOriginKind(), _originLocation.Text);
+
+        /// <summary>
+        /// The kind of origin the user selected, or null when the origin was
+        /// not recorded.
+        /// </summary>
+        private ProjectOriginKind? CurrentOriginKind()
+        {
+            var index = _originKind.SelectedIndex;
+            return index > 0 && index < OriginKindOptions.Length
+                ? OriginKindOptions[index].Kind
+                : null;
+        }
+
+        /// <summary>
+        /// The location input only makes sense once a kind is selected, and
+        /// the browse action only applies to a local folder.
+        /// </summary>
+        private void UpdateOriginInputs()
+        {
+            var kind = CurrentOriginKind();
+            _originLocation.Enabled = kind is not null;
+            _browseOrigin.Enabled = kind == ProjectOriginKind.LocalFolder;
+            _openOrigin.Enabled = kind is not null &&
+                !string.IsNullOrWhiteSpace(_originLocation.Text);
+        }
+
+        /// <summary>
+        /// Picks the folder of a local origin. The dialog is only a shortcut:
+        /// the path can also be typed or pasted.
+        /// </summary>
+        private void BrowseOriginFolder()
+        {
+            string? selectedFolder;
+            if (FolderPicker is not null)
+            {
+                selectedFolder = FolderPicker();
+            }
+            else
+            {
+                using var dialog = new FolderBrowserDialog
+                {
+                    Description = AppLocalization.Translate("Select the origin folder"),
+                    UseDescriptionForTitle = true,
+                    ShowNewFolderButton = false,
+                };
+
+                if (!string.IsNullOrWhiteSpace(_originLocation.Text))
+                {
+                    dialog.SelectedPath = _originLocation.Text.Trim();
+                }
+
+                if (dialog.ShowDialog(this) != DialogResult.OK)
+                {
+                    return;
+                }
+
+                selectedFolder = dialog.SelectedPath;
+            }
+
+            if (string.IsNullOrWhiteSpace(selectedFolder))
+            {
+                return;
+            }
+
+            _originLocation.Text = selectedFolder.Trim();
+        }
+
         private static bool IsHttpUrl(string? url) => EntryOpenActions.IsHttpUrl(url);
 
         private void MarkDirty() => _dirty = true;
@@ -1548,6 +1749,8 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _entry.CodeSnippet = string.IsNullOrEmpty(_code.Text) ? null : _code.Text;
             _entry.Comments = string.IsNullOrEmpty(_comments.Text) ? null : _comments.Text;
             _entry.YouTubeUrl = NullIfBlank(_youtube.Text);
+            _entry.ProjectOriginKind = CurrentOriginKind();
+            _entry.ProjectOriginLocation = NullIfBlank(_originLocation.Text);
         }
 
         private async Task SaveAsync()
@@ -1643,6 +1846,8 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 EntryField.Tags => _tags,
                 EntryField.Description => _description,
                 EntryField.YouTubeUrl => _youtube,
+                EntryField.OriginKind => _originKind,
+                EntryField.OriginLocation => _originLocation,
                 _ => _title,
             };
 

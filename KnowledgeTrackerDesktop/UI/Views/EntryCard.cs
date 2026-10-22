@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Drawing.Drawing2D;
 using KnowledgeTrackerDesktop.Core;
+using KnowledgeTrackerDesktop.Services;
 using KnowledgeTrackerDesktop.UI.Theme;
 
 namespace KnowledgeTrackerDesktop.UI.Views
@@ -25,6 +26,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
         private readonly Label _duplicate;
         private readonly Font _deleteFont = new("Segoe MDL2 Assets", 12f);
         private readonly ContextMenuStrip _contextMenu;
+        private Label? _originLink;
         private bool _isSelected;
         private DateTime _lastOpenAt = DateTime.MinValue;
 
@@ -131,6 +133,12 @@ namespace KnowledgeTrackerDesktop.UI.Views
         public event Action<EntryCard>? DeleteRequested;
 
         public event Action<EntryCard>? DuplicateRequested;
+
+        /// <summary>
+        /// Raised when the user clicks the origin shown on the card, so the
+        /// source of the knowledge can be opened without opening the entry.
+        /// </summary>
+        public event Action<EntryCard>? OriginOpenRequested;
 
         /// <summary>Applies the selection visuals without raising events.</summary>
         public void SetSelected(bool selected)
@@ -244,11 +252,17 @@ namespace KnowledgeTrackerDesktop.UI.Views
             AppLocalization.Bind(duplicate, "Duplicate");
             duplicate.Click += (_, _) => DuplicateRequested?.Invoke(this);
 
+            var origin = new ToolStripMenuItem("Open origin");
+            AppLocalization.Bind(origin, "Open origin");
+            origin.Click += (_, _) => OriginOpenRequested?.Invoke(this);
+            origin.Visible = Entry.ProjectOriginKind.HasValue &&
+                !string.IsNullOrWhiteSpace(Entry.ProjectOriginLocation);
+
             var delete = new ToolStripMenuItem("Delete");
             AppLocalization.Bind(delete, "Delete");
             delete.Click += (_, _) => DeleteRequested?.Invoke(this);
 
-            menu.Items.AddRange(new ToolStripItem[] { open, favorite, duplicate, delete });
+            menu.Items.AddRange(new ToolStripItem[] { open, favorite, duplicate, origin, delete });
             ContextMenuStrip = menu;
             return menu;
         }
@@ -261,7 +275,8 @@ namespace KnowledgeTrackerDesktop.UI.Views
         /// </summary>
         private void WireMouseEvents(Control control)
         {
-            if (control == _favorite || control == _delete || control == _duplicate)
+            if (control == _favorite || control == _delete || control == _duplicate ||
+                control == _originLink)
             {
                 return;
             }
@@ -314,6 +329,15 @@ namespace KnowledgeTrackerDesktop.UI.Views
             {
                 AddCardCaption(content, "Project");
                 AddCardValue(content, Entry.ProjectName.Trim());
+            }
+
+            if (Entry.ProjectOriginKind.HasValue &&
+                !string.IsNullOrWhiteSpace(Entry.ProjectOriginLocation))
+            {
+                AddCardCaption(content, "Origin");
+                content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                content.Controls.Add(CreateOriginLink(), 0, content.RowCount);
+                content.RowCount++;
             }
 
             var tags = KnowledgeEntryTags.Split(Entry.Tags);
@@ -372,6 +396,31 @@ namespace KnowledgeTrackerDesktop.UI.Views
             content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             content.Controls.Add(label, 0, content.RowCount);
             content.RowCount++;
+        }
+
+        /// <summary>
+        /// The origin is a shortcut to the source of the knowledge: clicking it
+        /// opens the folder or the link, without selecting or opening the
+        /// entry itself.
+        /// </summary>
+        private Control CreateOriginLink()
+        {
+            var kind = Entry.ProjectOriginKind!.Value;
+            var location = Entry.ProjectOriginLocation!.Trim();
+
+            var link = CreateLabel(
+                ProjectOriginRules.DescribeLocation(kind, location),
+                AppTheme.Fonts.Small,
+                AppTheme.Accent);
+            link.Cursor = Cursors.Hand;
+            link.MinimumSize = new Size(0, 14);
+            link.AccessibleName = AppLocalization.Translate("Open origin");
+            link.Click += (_, _) => OriginOpenRequested?.Invoke(this);
+            link.MouseEnter += (_, _) => link.ForeColor = AppTheme.AccentAlt;
+            link.MouseLeave += (_, _) => link.ForeColor = AppTheme.Accent;
+
+            _originLink = link;
+            return link;
         }
 
         private Control CreateTags()

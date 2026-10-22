@@ -20,7 +20,9 @@ namespace KnowledgeTrackerDesktop.Tests.UI
             string? comments = null,
             string? codeSnippet = null,
             DateTime? dateResolved = null,
-            bool isFavorite = false)
+            bool isFavorite = false,
+            ProjectOriginKind? originKind = null,
+            string? originLocation = null)
         {
             return new KnowledgeEntry
             {
@@ -34,6 +36,8 @@ namespace KnowledgeTrackerDesktop.Tests.UI
                 CodeSnippet = codeSnippet,
                 DateResolved = dateResolved,
                 IsFavorite = isFavorite,
+                ProjectOriginKind = originKind,
+                ProjectOriginLocation = originLocation,
             };
         }
 
@@ -386,6 +390,85 @@ namespace KnowledgeTrackerDesktop.Tests.UI
                 projectName: "App");
 
             Assert.Equal(new[] { 1 }, result.Select(e => e.Id));
+        }
+
+        [Fact]
+        public void Apply_OriginFilter_KeepsOnlyTheSelectedKind()
+        {
+            var source = new[]
+            {
+                Entry(id: 1, originKind: ProjectOriginKind.LocalFolder, originLocation: @"C:\app"),
+                Entry(id: 2, originKind: ProjectOriginKind.GitRepository, originLocation: "https://github.com/owner/repo"),
+                Entry(id: 3, originKind: ProjectOriginKind.WebPage, originLocation: "https://example.com"),
+                Entry(id: 4),
+            };
+
+            var folders = EntryListFilter.Apply(
+                source, null, new HashSet<string>(), false,
+                EntrySortMode.DateResolvedDescending,
+                originFilter: OriginFilterOption.LocalFolder);
+            Assert.Equal(new[] { 1 }, folders.Select(e => e.Id));
+
+            var repositories = EntryListFilter.Apply(
+                source, null, new HashSet<string>(), false,
+                EntrySortMode.DateResolvedDescending,
+                originFilter: OriginFilterOption.GitRepository);
+            Assert.Equal(new[] { 2 }, repositories.Select(e => e.Id));
+
+            var pages = EntryListFilter.Apply(
+                source, null, new HashSet<string>(), false,
+                EntrySortMode.DateResolvedDescending,
+                originFilter: OriginFilterOption.WebPage);
+            Assert.Equal(new[] { 3 }, pages.Select(e => e.Id));
+        }
+
+        [Fact]
+        public void Apply_OriginFilterNotRecorded_KeepsOnlyEntriesWithoutOrigin()
+        {
+            var source = new[]
+            {
+                Entry(id: 1, originKind: ProjectOriginKind.LocalFolder, originLocation: @"C:\app"),
+                Entry(id: 2),
+                Entry(id: 3),
+            };
+
+            var result = EntryListFilter.Apply(
+                source, null, new HashSet<string>(), false,
+                EntrySortMode.DateResolvedDescending,
+                originFilter: OriginFilterOption.NotRecorded);
+
+            Assert.Equal(new[] { 2, 3 }, result.Select(e => e.Id));
+        }
+
+        [Fact]
+        public void Apply_OriginFilterAll_KeepsEveryEntry()
+        {
+            var source = new[]
+            {
+                Entry(id: 1, originKind: ProjectOriginKind.LocalFolder, originLocation: @"C:\app"),
+                Entry(id: 2),
+            };
+
+            var result = EntryListFilter.Apply(
+                source, null, new HashSet<string>(), false,
+                EntrySortMode.DateResolvedDescending,
+                originFilter: OriginFilterOption.All);
+
+            Assert.Equal(new[] { 1, 2 }, result.Select(e => e.Id));
+        }
+
+        [Fact]
+        public void MatchesSearch_FindsTextInTheOriginLocation()
+        {
+            var entry = Entry(
+                id: 1,
+                title: "Something",
+                originKind: ProjectOriginKind.GitRepository,
+                originLocation: "https://github.com/owner/repo");
+
+            Assert.True(EntryListFilter.MatchesSearch(entry, "github"));
+            Assert.True(EntryListFilter.MatchesSearch(entry, "OWNER"));
+            Assert.False(EntryListFilter.MatchesSearch(entry, "gitlab"));
         }
 
         [Fact]
