@@ -228,6 +228,7 @@ namespace KnowledgeTrackerDesktop.UI
             ["The file was created by a newer version of KnowledgeTracker. Update the application and try again."] =
                 "O ficheiro foi criado por uma versão mais recente do KnowledgeTracker. Atualize a aplicação e tente novamente.",
             ["No entries to import."] = "Sem entradas para importar.",
+            ["Help (F1)"] = "Ajuda (F1)",
         };
 
         private static readonly Dictionary<string, string> EnglishText = PortugueseText

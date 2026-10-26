@@ -310,15 +310,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
                     color: AppTheme.PrimaryText);
             }
 
-            if (ShowsOrigin)
-            {
-                AddCaption("Origin");
-                AddValue(
-                    () => OriginKindText,
-                    font: AppTheme.Fonts.Caption,
-                    color: AppTheme.SecondaryText);
-                AddValue(() => OriginLocationText);
-            }
+            // Origem removida da pré-visualização conforme solicitado.
         }
 
         private void AddActions()
@@ -373,12 +365,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
                     Captions("Open video")));
             }
 
-            if (ShowsOrigin)
-            {
-                buttons.Add((
-                    CreateActionButton("Open origin", RequestOpenOrigin, ButtonRole.Secondary),
-                    Captions("Open origin")));
-            }
+            // Botão "Open origin" removido da pré-visualização conforme solicitado.
 
             actions.Controls.AddRange(buttons.Select(pair => pair.Button).ToArray());
 

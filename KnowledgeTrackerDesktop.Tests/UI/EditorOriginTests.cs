@@ -1,9 +1,11 @@
+using Syncfusion.WinForms.ListView;
 using System.Reflection;
 using KnowledgeTrackerDesktop.Core;
 using KnowledgeTrackerDesktop.Services;
 using KnowledgeTrackerDesktop.UI.Navigation;
 using KnowledgeTrackerDesktop.UI.Views;
 using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.WinForms.Input;
 using Xunit;
 
 namespace KnowledgeTrackerDesktop.Tests.UI;
@@ -23,8 +25,38 @@ public sealed class EditorOriginTests
         var tabs = Descendants(editor).OfType<TabControlAdv>().Single();
         var general = tabs.TabPages.Cast<TabPageAdv>().First(page => Equals(page.Tag, "General"));
 
-        Assert.True(IsInside(FieldOf(editor, "_originKind"), general));
-        Assert.True(IsInside(FieldOf(editor, "_originLocation"), general));
+        Assert.True(IsInside(OriginKindPanel(editor), general));
+        Assert.True(IsInside(OriginLocationBox(editor), general));
+    }
+
+    [Fact]
+    public void TheOriginKindSelectorHasAFixedHeightAndDoesNotWrap()
+    {
+        using var editor = CreateEditor(new KnowledgeEntry { Id = 8, Title = "Origin layout" });
+
+        var panel = OriginKindPanel(editor);
+
+        // The panel must not auto-size through WrapContents: its preferred
+        // height would then depend on its width and force the whole General
+        // tab through repeated layout passes when the editor opens.
+        Assert.False(panel.AutoSize);
+        Assert.False(panel.WrapContents);
+        Assert.True(panel.Height >= 30);
+        Assert.All(OriginKindRadios(editor), radio => Assert.True(radio.Visible));
+    }
+
+    [Fact]
+    public void TheOriginLocationUsesTheFullWidthAndWraps()
+    {
+        using var editor = CreateEditor(new KnowledgeEntry { Id = 9, Title = "Origin width" });
+
+        var location = OriginLocationBox(editor);
+        var title = FieldOf<TextBoxExt>(editor, "_title");
+
+        Assert.True(location.Multiline);
+        Assert.True(location.WordWrap);
+        Assert.True(location.Height >= 50, $"Origin height was {location.Height}px.");
+        Assert.InRange(Math.Abs(location.Width - title.Width), 0, 2);
     }
 
     [Fact]
@@ -32,8 +64,10 @@ public sealed class EditorOriginTests
     {
         using var editor = CreateEditor(new KnowledgeEntry { Id = 2, Title = "No origin" });
 
-        Assert.Equal(0, OriginKindBox(editor).SelectedIndex);
+        Assert.True(OriginKindRadios(editor)[0].Checked);
+        Assert.False(OriginKindRadios(editor)[1].Checked);
         Assert.Equal(string.Empty, OriginLocationBox(editor).Text);
+        Assert.False(OriginLocationBox(editor).Enabled);
     }
 
     [Theory]
@@ -54,8 +88,9 @@ public sealed class EditorOriginTests
 
         using var editor = CreateEditor(entry);
 
-        Assert.Equal(expectedIndex, OriginKindBox(editor).SelectedIndex);
+        Assert.True(OriginKindRadios(editor)[expectedIndex].Checked);
         Assert.Equal(entry.ProjectOriginLocation, OriginLocationBox(editor).Text);
+        Assert.True(OriginLocationBox(editor).Enabled);
     }
 
     [Theory]
@@ -67,7 +102,7 @@ public sealed class EditorOriginTests
         var entry = new KnowledgeEntry { Id = 4, Title = "Edited" };
         using var editor = CreateEditor(entry);
 
-        OriginKindBox(editor).SelectedIndex = index;
+        OriginKindRadios(editor)[index].Checked = true;
         OriginLocationBox(editor).Text = kind == ProjectOriginKind.LocalFolder
             ? @"C:\projects\app"
             : "https://example.com/origin";
@@ -94,7 +129,7 @@ public sealed class EditorOriginTests
         };
         using var editor = CreateEditor(entry);
 
-        OriginKindBox(editor).SelectedIndex = 0;
+        OriginKindRadios(editor)[0].Checked = true;
         OriginLocationBox(editor).Text = string.Empty;
 
         ApplyToEntry(editor);
@@ -125,12 +160,20 @@ public sealed class EditorOriginTests
         Assert.Equal(string.Empty, OriginLocationBox(editor).Text);
     }
 
-    private static ComboBoxAdv OriginKindBox(ctlAddEdit editor) =>
-        (ComboBoxAdv)FieldOf(editor, "_originKind");
-
+    private static FlowLayoutPanel OriginKindPanel(ctlAddEdit editor) =>
+        FieldOf<FlowLayoutPanel>(editor, "_originKindPanel");
+    private static RadioButton[] OriginKindRadios(ctlAddEdit editor) =>
+        FieldOf<RadioButton[]>(editor, "_originKindOptions");
     private static TextBoxExt OriginLocationBox(ctlAddEdit editor) =>
-        (TextBoxExt)FieldOf(editor, "_originLocation");
+        FieldOf<TextBoxExt>(editor, "_originLocation");
 
+    private static T FieldOf<T>(object instance, string name)
+    {
+        return (T)instance
+            .GetType()
+            .GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!
+            .GetValue(instance)!;
+    }
     private static void ApplyToEntry(ctlAddEdit editor)
     {
         typeof(ctlAddEdit)

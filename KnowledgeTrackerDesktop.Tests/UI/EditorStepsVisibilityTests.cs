@@ -557,10 +557,52 @@ public sealed class EditorStepsVisibilityTests
             .GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
             .GetValue(editor)!;
 
-        var technologies = Field("_technologies");
+        var project = Field("_project");
         var date = Field("_date");
 
-        Assert.InRange(date.Height, technologies.Height - 1, technologies.Height + 1);
+        Assert.InRange(date.Height, project.Height - 1, project.Height + 1);
+    }
+
+    [Fact]
+    public void LongMetadataInputsUseTheFullWidthAndWrap()
+    {
+        using var editor = new ctlAddEdit(
+            new FakeEntryService(),
+            new FakeNavigation(),
+            new FakeShellHost(),
+            new EntryEditorRequest(new KnowledgeEntry { Id = 12, Title = "Long metadata" }))
+        {
+            Size = new Size(1200, 800),
+        };
+        editor.PerformLayout();
+
+        Control Field(string name) => (Control)typeof(ctlAddEdit)
+            .GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .GetValue(editor)!;
+
+        var title = Field("_title");
+        var origin = (TextBoxExt)Field("_originLocation");
+        var technologies = (TextBoxExt)Field("_technologies");
+        var tags = (TextBoxExt)Field("_tags");
+        var date = Field("_date");
+
+        Assert.True(origin.Multiline);
+        Assert.True(origin.WordWrap);
+        Assert.True(origin.Height >= 50, $"Origin height was {origin.Height}px.");
+        Assert.InRange(
+            Math.Abs(origin.Width - title.Width),
+            0,
+            2);
+
+        Assert.True(technologies.Multiline);
+        Assert.True(technologies.WordWrap);
+        Assert.True(technologies.Height >= 50, $"Technologies height was {technologies.Height}px.");
+        Assert.True(technologies.Width > date.Width, "Technologies should use more width than the date.");
+
+        Assert.True(tags.Multiline);
+        Assert.True(tags.WordWrap);
+        Assert.True(tags.Height >= 50, $"Tags height was {tags.Height}px.");
+        Assert.True(tags.Width > date.Width, "Tags should use more width than the date.");
     }
 
     private static Control FieldOf(object instance, string name) => (Control)instance

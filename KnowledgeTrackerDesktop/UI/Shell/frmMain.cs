@@ -29,6 +29,7 @@ namespace KnowledgeTrackerDesktop.UI.Shell
         private readonly Image _portugueseFlag;
         private readonly Label _pageTitle;
         private readonly PageTitlePanel _titlePanel;
+        private readonly Label _helpLabel = new();
         private readonly Panel _contentHost;
         private readonly Label _placeholder;
         private SfButton? _libraryNavButton;
@@ -73,9 +74,37 @@ namespace KnowledgeTrackerDesktop.UI.Shell
             _titlePanel = new PageTitlePanel
             {
                 Dock = DockStyle.Fill,
-                Padding = new Padding(14, 0, 8, 0),
+                Padding = new Padding(14, 0, 16, 0),
             };
-            _titlePanel.Controls.Add(_pageTitle);
+
+            var titleInner = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 1,
+                Margin = Padding.Empty,
+                Padding = Padding.Empty,
+                BackColor = Color.Transparent,
+            };
+            typeof(Control).GetProperty("DoubleBuffered", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(titleInner, true);
+            titleInner.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+            titleInner.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+
+            _pageTitle.Dock = DockStyle.Fill;
+            _pageTitle.AutoSize = false;
+            _pageTitle.TextAlign = ContentAlignment.MiddleLeft;
+            titleInner.Controls.Add(_pageTitle, 0, 0);
+
+            _helpLabel.Dock = DockStyle.Fill;
+            _helpLabel.AutoSize = false;
+            _helpLabel.TextAlign = ContentAlignment.MiddleRight;
+            _helpLabel.ForeColor = AppTheme.SecondaryText;
+            _helpLabel.Font = AppTheme.Fonts.Caption;
+            _helpLabel.Margin = new Padding(16, 0, 0, 0);
+            AppLocalization.Bind(_helpLabel, "Help" + " (F1)");
+            titleInner.Controls.Add(_helpLabel, 1, 0);
+
+            _titlePanel.Controls.Add(titleInner);
 
             _actionsHost = new FlowLayoutPanel
             {
@@ -114,6 +143,14 @@ namespace KnowledgeTrackerDesktop.UI.Shell
             _languageOptions.Controls.Add(_englishLanguageButton, 0, 0);
             _languageOptions.Controls.Add(_portugueseLanguageButton, 1, 0);
             ApplyLanguageOptionStyles();
+
+            _helpLabel.AutoSize = true;
+            _helpLabel.TextAlign = ContentAlignment.MiddleRight;
+            _helpLabel.Dock = DockStyle.Right;
+            _helpLabel.Padding = new Padding(0, 0, 16, 0);
+            _helpLabel.ForeColor = AppTheme.SecondaryText;
+            _helpLabel.Font = AppTheme.Fonts.Caption;
+            AppLocalization.Bind(_helpLabel, "Help" + " (F1)");
 
             _headerOptionsHost = new TableLayoutPanel
             {
@@ -292,6 +329,8 @@ namespace KnowledgeTrackerDesktop.UI.Shell
             header.RowStyles.Add(new RowStyle(SizeType.Absolute, 60f));
             header.RowStyles.Add(new RowStyle(SizeType.Absolute, 56f));
 
+            _titlePanel.Dock = DockStyle.Fill;
+            _titlePanel.Padding = new Padding(14, 0, 16, 0);
             header.Controls.Add(_titlePanel, 0, 0);
             header.Controls.Add(_headerOptionsHost, 0, 1);
             return header;
@@ -319,17 +358,6 @@ namespace KnowledgeTrackerDesktop.UI.Shell
                 Navigation?.NavigateToPrimary<ctlStatistics>());
             _navItems.Controls.Add(_libraryNavButton);
             _navItems.Controls.Add(_statisticsNavButton);
-
-            // Add Help button with F1 shortcut hint
-            var helpButton = BuildNavButton("Help", () => OpenHelpDialog());
-            AppLocalization.Bind(helpButton, "Help");
-            helpButton.Text = AppLocalization.Translate("Help") + " (F1)";
-            AppLocalization.LanguageChanged += (_, _) => 
-            {
-                if (!helpButton.IsDisposed)
-                    helpButton.Text = AppLocalization.Translate("Help") + " (F1)";
-            };
-            _navItems.Controls.Add(helpButton);
 
             return navigation;
         }

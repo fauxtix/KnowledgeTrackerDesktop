@@ -1,13 +1,13 @@
-using System.Diagnostics;
-using System.Reflection;
 using KnowledgeTrackerDesktop.Core;
 using KnowledgeTrackerDesktop.Services;
 using KnowledgeTrackerDesktop.UI.Navigation;
 using KnowledgeTrackerDesktop.UI.Theme;
+using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Controls.Styles;
 using Syncfusion.WinForms.Input;
-using Syncfusion.Windows.Forms.Tools;
+using System.Diagnostics;
+using System.Reflection;
 
 namespace KnowledgeTrackerDesktop.UI.Views
 {
@@ -41,7 +41,8 @@ namespace KnowledgeTrackerDesktop.UI.Views
         private readonly TableLayoutPanel _attachments = new();
         private readonly SfButton _openGallery = new();
         private readonly TextBoxExt _comments = new();
-        private readonly ComboBoxAdv _originKind = new();
+        private readonly RadioButton[] _originKindOptions = new RadioButton[OriginKindOptions.Length];
+        private readonly FlowLayoutPanel _originKindPanel = new();
         private readonly TextBoxExt _originLocation = new();
         private readonly SfButton _browseOrigin = new();
         private readonly SfButton _openOrigin = new();
@@ -119,6 +120,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             BackColor = AppTheme.Background;
             DoubleBuffered = true;
             AppLocalization.LanguageChanged += OnLanguageChanged;
+
             Controls.Add(BuildRoot());
             LoadEntryIntoControls();
         }
@@ -507,6 +509,8 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
             _technologies.Dock = DockStyle.Fill;
             _technologies.Multiline = false;
+            _technologies.WordWrap = false;
+            _technologies.ScrollBars = ScrollBars.None;
             _technologies.TextChanged += (_, _) =>
             {
                 MarkDirty();
@@ -522,6 +526,8 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
             _tags.Dock = DockStyle.Fill;
             _tags.Multiline = false;
+            _tags.WordWrap = false;
+            _tags.ScrollBars = ScrollBars.None;
             _tags.TextChanged += (_, _) =>
             {
                 MarkDirty();
@@ -533,6 +539,27 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _favorite.Anchor = AnchorStyles.Left;
             _favorite.Margin = new Padding(8, 6, 0, 0);
             _favorite.CheckedChanged += (_, _) => MarkDirty();
+        }
+
+        /// <summary>
+        /// Long paths, URLs and list values are edited in a fixed-height
+        /// multiline box so they wrap instead of disappearing past the right
+        /// edge. Newlines are not part of any of these values: Enter is
+        /// suppressed, and pasted line breaks are flattened before saving.
+        /// </summary>
+        private static void ConfigureWrappingInput(TextBoxExt input)
+        {
+            input.Multiline = true;
+            input.WordWrap = true;
+            input.ScrollBars = ScrollBars.Vertical;
+            input.KeyDown += (_, e) =>
+            {
+                if (e.KeyCode == Keys.Enter)
+                {
+                    e.SuppressKeyPress = true;
+                    e.Handled = true;
+                }
+            };
         }
 
         private Control BuildMainInformationRow()
@@ -564,66 +591,96 @@ namespace KnowledgeTrackerDesktop.UI.Views
         /// decides how the location is read (an absolute folder path or an
         /// http(s) link), so the browse action is only offered for a local
         /// folder and the location is disabled when no kind is selected.
+        /// Radio buttons keep the options visible without the legacy combo
+        /// that was clipping/flickering.
         /// </summary>
         private Control BuildOriginSection()
         {
-            _originKind.DropDownStyle = ComboBoxStyle.DropDownList;
-            _originKind.Font = AppTheme.Fonts.Input;
-            _originKind.TextBoxHeight = 26;
-            _originKind.Items.AddRange(
-                OriginKindOptions.Select(option => (object)option.Label).ToArray());
-            AppLocalization.BindComboItems(
-                _originKind,
-                OriginKindOptions.Select((option, index) => (index, option.Label)).ToArray());
-            _originKind.SelectedIndex = 0;
-            _originKind.SelectedIndexChanged += (_, _) =>
+            // Criar o contentor final logo e suspender tudo desde o início
+            var root = new TableLayoutPanel
             {
-                UpdateOriginInputs();
-                MarkDirty();
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = 1,
+                RowCount = 2,
+                Margin = Padding.Empty,
+                Font = AppTheme.Fonts.Caption,
             };
+            root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+            root.SuspendLayout();
 
+            // ---- Origin kind (rádios) ----
+            // Fixed height and no wrapping: an AutoSize + WrapContents panel
+            // docked inside this AutoSize layout makes its preferred height
+            // depend on its width (and vice versa), which forces the whole
+            // General tab through repeated layout passes on every open.
+            _originKindPanel.SuspendLayout();
+            _originKindPanel.Controls.Clear();
+            _originKindPanel.FlowDirection = FlowDirection.LeftToRight;
+            _originKindPanel.WrapContents = false;
+            _originKindPanel.AutoSize = false;
+            _originKindPanel.Height = 34;
+            _originKindPanel.Dock = DockStyle.Top;
+            _originKindPanel.Margin = Padding.Empty;
+            _originKindPanel.BackColor = AppTheme.Surface;
+            _originKindPanel.Font = AppTheme.Fonts.Caption;
+
+            for (var i = 0; i < OriginKindOptions.Length; i++)
+            {
+                var radio = new RadioButton
+                {
+                    AutoSize = true,
+                    Margin = new Padding(0, 4, 16, 4),
+                    ForeColor = AppTheme.PrimaryText,
+                    BackColor = AppTheme.Surface,
+                    Font = AppTheme.Fonts.Input,
+                    Tag = i,
+                };
+
+                AppLocalization.Bind(radio, OriginKindOptions[i].Label);
+
+                // Guarda a referência para ligar o evento mais tarde
+                _originKindOptions[i] = radio;
+                _originKindPanel.Controls.Add(radio);
+            }
+
+            // ---- Location ----
             _originLocation.Dock = DockStyle.Fill;
             _originLocation.Multiline = false;
-            _originLocation.TextChanged += (_, _) =>
-            {
-                _openOrigin.Enabled = CurrentOriginKind() is not null &&
-                    !string.IsNullOrWhiteSpace(_originLocation.Text);
-                MarkDirty();
-            };
+            _originLocation.WordWrap = false;
+            _originLocation.ScrollBars = ScrollBars.None;
 
             AppLocalization.Bind(_browseOrigin, "Browse...");
             _browseOrigin.AutoSize = false;
-            _browseOrigin.Size = new Size(96, 28);
-            _browseOrigin.Anchor = AnchorStyles.Left;
-            _browseOrigin.Margin = new Padding(8, 0, 0, 0);
-            _browseOrigin.Click += (_, _) => BrowseOriginFolder();
+            _browseOrigin.Size = new Size(96, 30);
+            _browseOrigin.Margin = new Padding(0, 0, 8, 0);
             ButtonStyler.Apply(_browseOrigin, ButtonRole.Secondary);
 
             AppLocalization.Bind(_openOrigin, "Open origin");
             _openOrigin.AutoSize = false;
-            _openOrigin.Size = new Size(110, 28);
-            _openOrigin.Anchor = AnchorStyles.Left;
-            _openOrigin.Margin = new Padding(8, 0, 0, 0);
-            _openOrigin.Click += (_, _) => OpenOrigin();
+            _openOrigin.Size = new Size(110, 30);
+            _openOrigin.Margin = Padding.Empty;
             ButtonStyler.Apply(_openOrigin, ButtonRole.Secondary);
 
-            var locationRow = new TableLayoutPanel
+            // Actions sit in the 30% column, aligned with the bottom of the
+            // input, so the location field can match the Title width (70%)
+            // without losing horizontal space to the buttons.
+            var originActions = new FlowLayoutPanel
             {
-                Dock = DockStyle.Fill,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                ColumnCount = 3,
-                RowCount = 1,
-                Margin = Padding.Empty,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
+                Margin = new Padding(8, 0, 0, 0),
+                Padding = Padding.Empty,
+                BackColor = AppTheme.Surface,
             };
-            locationRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
-            locationRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            locationRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            locationRow.Controls.Add(CreateMetadataInput(_originLocation), 0, 0);
-            locationRow.Controls.Add(_browseOrigin, 1, 0);
-            locationRow.Controls.Add(_openOrigin, 2, 0);
+            originActions.Controls.Add(_browseOrigin);
+            originActions.Controls.Add(_openOrigin);
 
-            var row = new TableLayoutPanel
+            var locationRow = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 AutoSize = true,
@@ -631,13 +688,60 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 ColumnCount = 2,
                 RowCount = 1,
                 Margin = Padding.Empty,
-                Font = AppTheme.Fonts.Caption,
             };
-            row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30f));
-            row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70f));
-            row.Controls.Add(Field("Origin type", CreateMetadataInput(_originKind), rightPad: 8), 0, 0);
-            row.Controls.Add(Field("Origin location", locationRow), 1, 0);
-            return row;
+            locationRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70f));
+            locationRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30f));
+            locationRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            locationRow.Controls.Add(
+                Field("Origin location", CreateMetadataInput(_originLocation, height: 30), rightPad: 8),
+                0,
+                0);
+            locationRow.Controls.Add(originActions, 1, 0);
+
+            // ---- Montar o root ----
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            root.Controls.Add(Field("Origin type", _originKindPanel), 0, 0);
+            root.Controls.Add(locationRow, 0, 1);
+
+            // ---- Agora liga os eventos (só uma vez) ----
+            for (var i = 0; i < _originKindOptions.Length; i++)
+            {
+                var radio = _originKindOptions[i];
+                radio.CheckedChanged += (_, _) =>
+                {
+                    if (radio.Checked)
+                    {
+                        if (CurrentOriginKind() is null)
+                            _originLocation.Text = string.Empty;
+
+                        UpdateOriginInputs();
+                        MarkDirty();
+                    }
+                };
+            }
+
+            _originLocation.TextChanged += (_, _) =>
+            {
+                _openOrigin.Enabled = CurrentOriginKind() is not null &&
+                    !string.IsNullOrWhiteSpace(_originLocation.Text);
+                MarkDirty();
+            };
+
+            _browseOrigin.Click += (_, _) => BrowseOriginFolder();
+            _openOrigin.Click += (_, _) => OpenOrigin();
+
+            // Marca o primeiro rádio só depois de tudo estar montado
+            if (_originKindOptions.Length > 0)
+                _originKindOptions[0].Checked = true;
+
+            _originKindPanel.ResumeLayout(false);
+            // The parent lays the section out once after it is attached; forcing
+            // a full layout here only repeats work before the form is shown.
+            root.ResumeLayout(false);
+
+            UpdateOriginInputs();
+            return root;
         }
 
         private Control BuildClassificationRow()
@@ -647,28 +751,52 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 Dock = DockStyle.Fill,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                ColumnCount = 4,
-                RowCount = 1,
+                ColumnCount = 1,
+                RowCount = 3,
                 Margin = Padding.Empty,
                 // See BuildMainInformationRow: keep the metadata inputs on the
                 // same font as before the tabs were removed.
                 Font = AppTheme.Fonts.Caption,
             };
-            meta.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 32f));
-            meta.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
-            meta.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 32f));
-            meta.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 11f));
+            meta.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+            meta.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            meta.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            meta.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-            meta.Controls.Add(Field("Technologies", CreateMetadataInput(_technologies), rightPad: 8), 0, 0);
-            meta.Controls.Add(Field("Date resolved", CreateMetadataInput(_date), rightPad: 8), 1, 0);
-            meta.Controls.Add(Field("Tags", CreateMetadataInput(_tags), rightPad: 8), 2, 0);
-            meta.Controls.Add(BuildFavoriteField(), 3, 0);
+            var technologies = Field(
+                "Technologies",
+                CreateMetadataInput(_technologies, height: 30));
+            technologies.Margin = new Padding(0, 0, 0, 8);
+            meta.Controls.Add(technologies, 0, 0);
+
+            var tags = Field(
+                "Tags",
+                CreateMetadataInput(_tags, height: 30));
+            tags.Margin = new Padding(0, 0, 0, 8);
+            meta.Controls.Add(tags, 0, 1);
+
+            var compact = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = 2,
+                RowCount = 1,
+                Margin = Padding.Empty,
+                Font = AppTheme.Fonts.Caption,
+            };
+            compact.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70f));
+            compact.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30f));
+            compact.Controls.Add(Field("Date resolved", _date, rightPad: 8), 0, 0);
+            compact.Controls.Add(BuildFavoriteField(), 1, 0);
+            meta.Controls.Add(compact, 0, 2);
+
             return meta;
         }
 
-        private static Control CreateMetadataInput(Control input)
+        private static Control CreateMetadataInput(Control input, int height = 30)
         {
-            var wrapper = ModernLayoutHelper.WrapInRoundedPanel(input, height: 30);
+            var wrapper = ModernLayoutHelper.WrapInRoundedPanel(input, height: height);
             wrapper.Margin = Padding.Empty;
             return wrapper;
         }
@@ -1385,7 +1513,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _comments.Text = _entry.Comments ?? string.Empty;
             _openVideo.Enabled = IsHttpUrl(_youtube.Text);
 
-            _originKind.SelectedIndex = OriginKindIndex(_entry.ProjectOriginKind);
+            SetOriginKind(_entry.ProjectOriginKind);
             _originLocation.Text = _entry.ProjectOriginLocation ?? string.Empty;
             UpdateOriginInputs();
 
@@ -1660,10 +1788,29 @@ namespace KnowledgeTrackerDesktop.UI.Views
         /// </summary>
         private ProjectOriginKind? CurrentOriginKind()
         {
-            var index = _originKind.SelectedIndex;
-            return index > 0 && index < OriginKindOptions.Length
-                ? OriginKindOptions[index].Kind
-                : null;
+            for (var i = 0; i < _originKindOptions.Length; i++)
+            {
+                if (_originKindOptions[i]?.Checked == true)
+                {
+                    return i > 0 && i < OriginKindOptions.Length
+                        ? OriginKindOptions[i].Kind
+                        : null;
+                }
+            }
+
+            return null;
+        }
+
+        private void SetOriginKind(ProjectOriginKind? kind)
+        {
+            var index = OriginKindIndex(kind);
+            for (var i = 0; i < _originKindOptions.Length; i++)
+            {
+                if (_originKindOptions[i] is not null)
+                {
+                    _originKindOptions[i].Checked = i == index;
+                }
+            }
         }
 
         /// <summary>
@@ -1731,10 +1878,12 @@ namespace KnowledgeTrackerDesktop.UI.Views
             // The list fields keep the auto-appended separator while editing
             // (pick, pick, pick); the saved value drops the trailing one.
             _entry.Technologies = NullIfBlank(
-                TagSuggestionHelper.TrimTrailingSeparators(_technologies.Text));
+                TagSuggestionHelper.TrimTrailingSeparators(
+                    FlattenLineBreaks(_technologies.Text)));
             _entry.DateResolved = _date.Value;
             _entry.Tags = NullIfBlank(
-                TagSuggestionHelper.TrimTrailingSeparators(_tags.Text));
+                TagSuggestionHelper.TrimTrailingSeparators(
+                    FlattenLineBreaks(_tags.Text)));
             _entry.IsFavorite = _favorite.Checked;
             _entry.Steps.Clear();
             for (var index = 0; index < _workingSteps.Count; index++)
@@ -1750,8 +1899,16 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _entry.Comments = string.IsNullOrEmpty(_comments.Text) ? null : _comments.Text;
             _entry.YouTubeUrl = NullIfBlank(_youtube.Text);
             _entry.ProjectOriginKind = CurrentOriginKind();
-            _entry.ProjectOriginLocation = NullIfBlank(_originLocation.Text);
+            _entry.ProjectOriginLocation = NullIfBlank(FlattenLineBreaks(_originLocation.Text));
         }
+
+        /// <summary>
+        /// The wrapping editors are still single-value fields: a pasted line
+        /// break is treated as a space so the stored path/URL/list stays on one
+        /// logical line.
+        /// </summary>
+        private static string FlattenLineBreaks(string value) =>
+            value.Replace("\r\n", " ").Replace('\r', ' ').Replace('\n', ' ');
 
         private async Task SaveAsync()
         {
@@ -1846,7 +2003,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 EntryField.Tags => _tags,
                 EntryField.Description => _description,
                 EntryField.YouTubeUrl => _youtube,
-                EntryField.OriginKind => _originKind,
+                EntryField.OriginKind => _originKindOptions.FirstOrDefault(r => r.Checked) ?? (Control)_originKindPanel,
                 EntryField.OriginLocation => _originLocation,
                 _ => _title,
             };

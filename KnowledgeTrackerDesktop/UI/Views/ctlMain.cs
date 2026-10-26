@@ -1,9 +1,11 @@
 using System.Diagnostics;
+using System.Reflection;
 using KnowledgeTrackerDesktop.Core;
 using KnowledgeTrackerDesktop.Services;
 using KnowledgeTrackerDesktop.UI.Navigation;
 using KnowledgeTrackerDesktop.UI.Theme;
 using Syncfusion.WinForms.Controls;
+using Syncfusion.WinForms.Controls.Styles;
 using Syncfusion.Windows.Forms.Tools;
 
 namespace KnowledgeTrackerDesktop.UI.Views
@@ -66,6 +68,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
         private readonly List<KnowledgeEntry> _allEntries = new();
         private readonly HashSet<string> _selectedTags = new(StringComparer.OrdinalIgnoreCase);
         private readonly LibraryNavigationRequest? _initialRequest;
+        private readonly List<SfScrollFrame> _scrollFrames = new();
 
         private int? _selectedEntryId;
         private bool _favoritesOnly;
@@ -121,7 +124,17 @@ namespace KnowledgeTrackerDesktop.UI.Views
             addButton.Click += (_, _) => OpenNewEntry();
             ButtonStyler.Apply(addButton, ButtonRole.Primary);
 
-            var importButton = CreateHeaderButton("Import", ImportLibrary);
+            var emptyLabel = new Label
+            {
+                AutoSize = true,
+                ForeColor = AppTheme.SecondaryText,
+                Margin = new Padding(2, 4, 2, 4),
+            };
+            AppLocalization.Bind(emptyLabel, "No tags yet.");
+            _tagsPanel.Controls.Add(emptyLabel);
+        
+
+        var importButton = CreateHeaderButton("Import", ImportLibrary);
             var exportButton = CreateHeaderButton("Export", ExportLibrary);
 
             _shell.SetPageTitle("Library");
@@ -157,6 +170,13 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 _searchDebounce.Stop();
                 _searchDebounce.Tick -= OnSearchDebounceTick;
                 _searchDebounce.Dispose();
+
+                foreach (var scrollFrame in _scrollFrames)
+                {
+                    scrollFrame.Dispose();
+                }
+
+                _scrollFrames.Clear();
             }
 
             base.Dispose(disposing);
@@ -364,7 +384,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 ColumnCount = 1,
                 RowCount = 2,
             };
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 76f));
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
             root.Controls.Add(BuildFilterBar(), 0, 0);
             root.Controls.Add(BuildSplitHost(), 0, 1);
@@ -391,6 +411,8 @@ namespace KnowledgeTrackerDesktop.UI.Views
 
             _split.Panel1.Controls.Add(BuildListHost());
             _split.Panel2.Controls.Add(_preview);
+            ApplyThemedScrollFrame(_preview);
+
 
             return _split;
         }
@@ -437,8 +459,10 @@ namespace KnowledgeTrackerDesktop.UI.Views
             {
                 Dock = DockStyle.Fill,
                 FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
+                WrapContents = true,
                 AutoScroll = false,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 Padding = new Padding(0, 4, 0, 4),
             };
 
@@ -456,7 +480,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             _tagsButton.Click += (_, _) => ShowTagsDropDown();
 
             _projectFilter.DropDownStyle = ComboBoxStyle.DropDownList;
-            _projectFilter.Width = 210;
+            _projectFilter.Width = 250;
             _projectFilter.Height = 44;
             _projectFilter.TextBoxHeight = 40;
             _projectFilter.Font = AppTheme.Fonts.Input;
@@ -473,7 +497,7 @@ namespace KnowledgeTrackerDesktop.UI.Views
             // The origin filter narrows the library by the kind of source the
             // knowledge came from. Index 0 means "every origin".
             _originFilter.DropDownStyle = ComboBoxStyle.DropDownList;
-            _originFilter.Width = 190;
+            _originFilter.Width = 210;
             _originFilter.Height = 44;
             _originFilter.TextBoxHeight = 40;
             _originFilter.Font = AppTheme.Fonts.Input;
@@ -694,10 +718,13 @@ namespace KnowledgeTrackerDesktop.UI.Views
             listPane.Controls.Add(_countLabel, 0, 0);
 
             var host = new Panel { Dock = DockStyle.Fill, BackColor = AppTheme.Background };
+            EnableDoubleBuffering(host);
+            _cards.Dock = DockStyle.Fill;
             host.Controls.Add(_statePanel);
             host.Controls.Add(_cards);
             listPane.Controls.Add(host, 0, 1);
 
+            ApplyThemedScrollFrame(_cards);
             return listPane;
         }
 
@@ -1045,6 +1072,36 @@ namespace KnowledgeTrackerDesktop.UI.Views
                 "No entries match your search.\r\n\r\nTry a different search term or clear the filters.",
                 retry: false,
                 clearFilters: true);
+        }
+
+        private static void EnableDoubleBuffering(Control control) =>
+            typeof(Control)
+                .GetProperty("DoubleBuffered", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?.SetValue(control, true);
+
+        private void ApplyThemedScrollFrame(Control control)
+        {
+            var scrollFrame = new SfScrollFrame();
+            var style = new ScrollerVisualStyle(control);
+            ApplyScrollBarTheme(style.VerticalScrollBar);
+            ApplyScrollBarTheme(style.HorizontalScrollBar);
+            scrollFrame.Style = style;
+            scrollFrame.Control = control;
+            _scrollFrames.Add(scrollFrame);
+        }
+
+        private static void ApplyScrollBarTheme(ScrollBarStyleInfo style)
+        {
+            style.ScrollBarBackColor = AppTheme.Background;
+            style.ThumbColor = AppTheme.CardBorder;
+            style.ThumbHoverColor = AppTheme.AccentAlt;
+            style.ThumbPressedColor = AppTheme.Accent;
+            style.ArrowButtonBackColor = AppTheme.Surface;
+            style.ArrowButtonHoverBackColor = AppTheme.CardBorder;
+            style.ArrowButtonPressedBackColor = AppTheme.Accent;
+            style.ArrowButtonForeColor = AppTheme.SecondaryText;
+            style.ArrowButtonHoverForeColor = AppTheme.PrimaryText;
+            style.ArrowButtonPressedForeColor = AppTheme.PrimaryText;
         }
 
         private void ShowStateMessage(string message, bool retry, bool clearFilters = false)

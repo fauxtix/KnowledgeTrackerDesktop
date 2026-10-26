@@ -252,17 +252,11 @@ namespace KnowledgeTrackerDesktop.UI.Views
             AppLocalization.Bind(duplicate, "Duplicate");
             duplicate.Click += (_, _) => DuplicateRequested?.Invoke(this);
 
-            var origin = new ToolStripMenuItem("Open origin");
-            AppLocalization.Bind(origin, "Open origin");
-            origin.Click += (_, _) => OriginOpenRequested?.Invoke(this);
-            origin.Visible = Entry.ProjectOriginKind.HasValue &&
-                !string.IsNullOrWhiteSpace(Entry.ProjectOriginLocation);
-
             var delete = new ToolStripMenuItem("Delete");
             AppLocalization.Bind(delete, "Delete");
             delete.Click += (_, _) => DeleteRequested?.Invoke(this);
 
-            menu.Items.AddRange(new ToolStripItem[] { open, favorite, duplicate, origin, delete });
+            menu.Items.AddRange(new ToolStripItem[] { open, favorite, duplicate, delete });
             ContextMenuStrip = menu;
             return menu;
         }
@@ -329,15 +323,6 @@ namespace KnowledgeTrackerDesktop.UI.Views
             {
                 AddCardCaption(content, "Project");
                 AddCardValue(content, Entry.ProjectName.Trim());
-            }
-
-            if (Entry.ProjectOriginKind.HasValue &&
-                !string.IsNullOrWhiteSpace(Entry.ProjectOriginLocation))
-            {
-                AddCardCaption(content, "Origin");
-                content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-                content.Controls.Add(CreateOriginLink(), 0, content.RowCount);
-                content.RowCount++;
             }
 
             var tags = KnowledgeEntryTags.Split(Entry.Tags);
